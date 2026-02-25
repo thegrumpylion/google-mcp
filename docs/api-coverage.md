@@ -2,18 +2,30 @@
 
 Tracking document for SDK method coverage across all three MCP servers.
 
-**Prerequisite:** Complete all items in [breaking-changes.md](breaking-changes.md) before adding new features. The breaking changes establish naming conventions, annotations, and shared infrastructure that all new tools must follow.
-
 Last updated: 2026-02-25
+
+## Conventions (all new tools must follow)
+
+1. **Naming:** `action_resource` pattern (e.g. `list_events`, `create_draft`, `get_profile`)
+2. **Annotations:**
+   - Read-only tools: `ReadOnlyHint: true`
+   - Non-destructive mutations (create, untrash, restore): `DestructiveHint: auth.BoolPtr(false)`
+   - Idempotent mutations (update, modify labels): `IdempotentHint: true`
+   - Destructive mutations (delete, trash): use defaults (no explicit hint needed)
+3. **Account field descriptions:** `"Account name"` for single-account tools, `"Account name or 'all' for all accounts"` for multi-account tools
+4. **Response format:** qualified IDs (e.g. `"Message ID: %s"`), newline-separated key-value pairs, no trailing `!`
+5. **Input validation:** validate required fields before making API calls
+6. **Helper usage:** `auth.BoolPtr(bool)` for `*bool` annotation fields; `buildMessage()` in compose.go for RFC 2822 messages
+7. **Testing:** every new tool must be added to `TestToolNames` and `TestToolAnnotations` in the corresponding `tools_test.go`
 
 ## Summary
 
 | Server   | Tools | SDK Methods Covered | Total SDK Methods | Coverage |
 |----------|-------|--------------------:|------------------:|---------:|
-| Gmail    |    16 |                  15 |                80 |      19% |
+| Gmail    |    25 |                  23 |                80 |      29% |
 | Drive    |    12 |                  13 |                58 |      22% |
 | Calendar |     8 |                   8 |                38 |      21% |
-| **Total**| **36**|              **36** |           **176** |  **~20%**|
+| **Total**| **45**|              **44** |           **176** |  **~25%**|
 
 ---
 
@@ -23,34 +35,44 @@ Last updated: 2026-02-25
 
 | Tool | SDK Method(s) | Type |
 |------|--------------|------|
-| `accounts_list` | Internal auth manager | Read |
-| `search` | `Messages.List` + `Messages.Get` | Read |
-| `read` | `Messages.Get` (full) | Read |
+| `list_accounts` | Internal auth manager | Read |
+| `get_profile` | `Users.GetProfile` | Read |
+| `search_messages` | `Messages.List` + `Messages.Get` | Read |
+| `read_message` | `Messages.Get` (full) | Read |
+| `modify_messages` | `Messages.BatchModify` | Mutation |
+| `delete_message` | `Messages.Delete` | Mutation |
+| `send_message` | `Messages.Send` | Mutation |
+| `list_threads` | `Threads.List` | Read |
 | `read_thread` | `Threads.Get` (full) | Read |
-| `thread_modify` | `Threads.Modify` | Mutation |
-| `send` | `Messages.Send` | Mutation |
+| `modify_thread` | `Threads.Modify` | Mutation |
+| `trash_thread` | `Threads.Trash` | Mutation |
+| `untrash_thread` | `Threads.Untrash` | Mutation |
 | `list_labels` | `Labels.List` | Read |
-| `modify` | `Messages.Modify` + `Messages.BatchModify` | Mutation |
+| `get_label` | `Labels.Get` | Read |
+| `create_label` | `Labels.Create` | Mutation |
+| `delete_label` | `Labels.Delete` | Mutation |
 | `get_attachment` | `Messages.Attachments.Get` | Read |
-| `draft_create` | `Drafts.Create` | Mutation |
-| `draft_list` | `Drafts.List` | Read |
-| `draft_get` | `Drafts.Get` | Read |
-| `draft_update` | `Drafts.Update` | Mutation |
-| `draft_delete` | `Drafts.Delete` | Mutation |
-| `draft_send` | `Drafts.Send` | Mutation |
+| `get_vacation` | `Settings.GetVacation` | Read |
+| `update_vacation` | `Settings.UpdateVacation` | Mutation |
+| `create_draft` | `Drafts.Create` | Mutation |
+| `list_drafts` | `Drafts.List` | Read |
+| `get_draft` | `Drafts.Get` | Read |
+| `update_draft` | `Drafts.Update` | Mutation |
+| `delete_draft` | `Drafts.Delete` | Mutation |
+| `send_draft` | `Drafts.Send` | Mutation |
 
 ### Gaps
 
 #### High Value
 
-- [ ] **Get user profile** -- `Users.GetProfile` (read) -- email address, message/thread counts, history ID
-- [ ] **List threads** -- `Threads.List` (read) -- thread-based browsing, distinct from message search
-- [ ] **Trash/Untrash thread** -- `Threads.Trash` / `Threads.Untrash` (mutation) -- direct trash operations on threads
-- [ ] **Create label** -- `Labels.Create` (mutation) -- create custom labels for organizing email
-- [ ] **Delete label** -- `Labels.Delete` (mutation) -- remove custom labels
-- [ ] **Get label details** -- `Labels.Get` (read) -- unread/total counts per label
-- [ ] **Delete message** -- `Messages.Delete` (mutation) -- permanently remove a message (bypasses trash, irreversible)
-- [ ] **Get/Update vacation** -- `Settings.GetVacation` / `Settings.UpdateVacation` (both) -- out-of-office auto-reply
+- [x] **Get user profile** -- `Users.GetProfile` (read) -- email address, message/thread counts, history ID
+- [x] **List threads** -- `Threads.List` (read) -- thread-based browsing, distinct from message search
+- [x] **Trash/Untrash thread** -- `Threads.Trash` / `Threads.Untrash` (mutation) -- direct trash operations on threads
+- [x] **Create label** -- `Labels.Create` (mutation) -- create custom labels for organizing email
+- [x] **Delete label** -- `Labels.Delete` (mutation) -- remove custom labels
+- [x] **Get label details** -- `Labels.Get` (read) -- unread/total counts per label
+- [x] **Delete message** -- `Messages.Delete` (mutation) -- permanently remove a message (bypasses trash, irreversible)
+- [x] **Get/Update vacation** -- `Settings.GetVacation` / `Settings.UpdateVacation` (both) -- out-of-office auto-reply
 
 #### Medium Value
 
@@ -82,18 +104,18 @@ Last updated: 2026-02-25
 
 | Tool | SDK Method(s) | Type |
 |------|--------------|------|
-| `accounts_list` | Internal auth manager | Read |
-| `search` | `Files.List` (with Q) | Read |
-| `list` | `Files.List` (with folder filter) | Read |
-| `get` | `Files.Get` | Read |
-| `read` | `Files.Get` (download) + `Files.Export` | Read |
-| `upload` | `Files.Create` (with media) | Mutation |
-| `update` | `Files.Update` (metadata) | Mutation |
-| `delete` | `Files.Delete` + `Files.Update` (trash) | Mutation |
+| `list_accounts` | Internal auth manager | Read |
+| `search_files` | `Files.List` (with Q) | Read |
+| `list_files` | `Files.List` (with folder filter) | Read |
+| `get_file` | `Files.Get` | Read |
+| `read_file` | `Files.Get` (download) + `Files.Export` | Read |
+| `upload_file` | `Files.Create` (with media) | Mutation |
+| `update_file` | `Files.Update` (metadata) | Mutation |
+| `delete_file` | `Files.Delete` + `Files.Update` (trash) | Mutation |
 | `create_folder` | `Files.Create` (folder) | Mutation |
-| `move` | `Files.Update` (parents) | Mutation |
-| `copy` | `Files.Copy` | Mutation |
-| `share` | `Permissions.Create` | Mutation |
+| `move_file` | `Files.Update` (parents) | Mutation |
+| `copy_file` | `Files.Copy` | Mutation |
+| `share_file` | `Permissions.Create` | Mutation |
 
 ### Gaps
 
@@ -145,7 +167,7 @@ Last updated: 2026-02-25
 
 | Tool | SDK Method(s) | Type |
 |------|--------------|------|
-| `accounts_list` | Internal auth manager | Read |
+| `list_accounts` | Internal auth manager | Read |
 | `list_calendars` | `CalendarList.List` | Read |
 | `list_events` | `Events.List` | Read |
 | `get_event` | `Events.Get` | Read |
@@ -190,6 +212,7 @@ Last updated: 2026-02-25
 
 ## Notes
 
+- **Gmail scope:** Uses `MailGoogleComScope` (`https://mail.google.com/`) which is the full-access scope. Required for permanent deletion (`Messages.Delete`, `Threads.Delete`, `Messages.BatchDelete`). It is a superset of `gmail.modify`, `gmail.send`, and `gmail.settings.basic`. Existing users will need to re-authorize after upgrading.
 - **Watch/push notification methods** exist across all three APIs but require webhook infrastructure. Not practical for MCP tools. Deprioritize.
 - **Sharing/permissions is a cross-cutting gap.** Drive can share but not inspect/revoke, Calendar has no ACL tools, Gmail has no delegation.
 - **Settings/admin methods** are consistently low-value for an MCP assistant context.

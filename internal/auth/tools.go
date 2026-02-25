@@ -16,7 +16,7 @@ func BoolPtr(v bool) *bool { return &v }
 // This tool is shared across all servers (Gmail, Drive, Calendar).
 func RegisterAccountsListTool(server *mcp.Server, mgr *Manager) {
 	mcp.AddTool(server, &mcp.Tool{
-		Name:        "accounts_list",
+		Name:        "list_accounts",
 		Description: "List all configured Google accounts. Use this to discover available account names.",
 		Annotations: &mcp.ToolAnnotations{
 			ReadOnlyHint: true,

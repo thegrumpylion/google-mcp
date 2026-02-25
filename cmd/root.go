@@ -169,9 +169,9 @@ func newGmailCmd() *cobra.Command {
 		Use:   "gmail",
 		Short: "Start the Gmail MCP server (stdio)",
 		Long: `Starts an MCP server over stdio with Gmail tools:
-  accounts_list, search, read, read_thread, send,
-  list_labels, modify, get_attachment,
-  draft_create, draft_list, draft_send.`,
+  list_accounts, search_messages, read_message, read_thread, send_message,
+  list_labels, modify_messages, get_attachment,
+  create_draft, list_drafts, send_draft, and more.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			mgr, err := newManager()
 			if err != nil {
@@ -195,8 +195,8 @@ func newDriveCmd() *cobra.Command {
 		Use:   "drive",
 		Short: "Start the Google Drive MCP server (stdio)",
 		Long: `Starts an MCP server over stdio with Drive tools:
-  accounts_list, search, list, get, read, upload,
-  update, delete, create_folder, move, copy, share.`,
+  list_accounts, search_files, list_files, get_file, read_file, upload_file,
+  update_file, delete_file, create_folder, move_file, copy_file, share_file.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			mgr, err := newManager()
 			if err != nil {
@@ -220,7 +220,7 @@ func newCalendarCmd() *cobra.Command {
 		Use:   "calendar",
 		Short: "Start the Google Calendar MCP server (stdio)",
 		Long: `Starts an MCP server over stdio with Calendar tools:
-  accounts_list, list_calendars, list_events, get_event,
+  list_accounts, list_calendars, list_events, get_event,
   create_event, update_event, delete_event, respond_event.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			mgr, err := newManager()

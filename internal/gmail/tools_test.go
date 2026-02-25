@@ -92,13 +92,20 @@ func TestToolNames(t *testing.T) {
 	got := listToolNames(t, server)
 
 	want := []string{
-		"accounts_list",
 		"create_draft",
+		"create_label",
 		"delete_draft",
+		"delete_label",
+		"delete_message",
 		"get_attachment",
 		"get_draft",
+		"get_label",
+		"get_profile",
+		"get_vacation",
+		"list_accounts",
 		"list_drafts",
 		"list_labels",
+		"list_threads",
 		"modify_messages",
 		"modify_thread",
 		"read_message",
@@ -106,7 +113,10 @@ func TestToolNames(t *testing.T) {
 		"search_messages",
 		"send_draft",
 		"send_message",
+		"trash_thread",
+		"untrash_thread",
 		"update_draft",
+		"update_vacation",
 	}
 
 	if len(got) != len(want) {
@@ -130,8 +140,9 @@ func TestToolAnnotations(t *testing.T) {
 	}
 
 	readOnly := []string{
-		"accounts_list", "search_messages", "read_message", "read_thread",
+		"list_accounts", "search_messages", "read_message", "read_thread",
 		"list_labels", "get_attachment", "list_drafts", "get_draft",
+		"get_profile", "get_label", "get_vacation", "list_threads",
 	}
 	for _, name := range readOnly {
 		tool := toolMap[name]
@@ -147,6 +158,8 @@ func TestToolAnnotations(t *testing.T) {
 	mutations := []string{
 		"send_message", "modify_messages", "modify_thread",
 		"create_draft", "update_draft", "delete_draft", "send_draft",
+		"create_label", "delete_label", "delete_message",
+		"trash_thread", "untrash_thread", "update_vacation",
 	}
 	for _, name := range mutations {
 		tool := toolMap[name]

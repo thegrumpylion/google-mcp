@@ -232,10 +232,10 @@ func TestToolNames(t *testing.T) {
 	sort.Strings(got)
 
 	want := []string{
-		"accounts_list",
 		"create_event",
 		"delete_event",
 		"get_event",
+		"list_accounts",
 		"list_calendars",
 		"list_events",
 		"respond_event",
@@ -263,7 +263,7 @@ func TestToolAnnotations(t *testing.T) {
 	}
 
 	readOnly := []string{
-		"accounts_list", "list_calendars", "list_events", "get_event",
+		"list_accounts", "list_calendars", "list_events", "get_event",
 	}
 	for _, name := range readOnly {
 		tool := toolMap[name]

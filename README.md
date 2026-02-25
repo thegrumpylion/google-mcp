@@ -188,7 +188,7 @@ Add to `~/.config/opencode/opencode.json`:
 
 | Tool | Description |
 |------|-------------|
-| `accounts_list` | List configured accounts |
+| `list_accounts` | List configured accounts |
 | `search` | Search messages using Gmail query syntax |
 | `read` | Read full message content by ID |
 | `read_thread` | Read all messages in a thread |
@@ -204,7 +204,7 @@ Add to `~/.config/opencode/opencode.json`:
 
 | Tool | Description |
 |------|-------------|
-| `accounts_list` | List configured accounts |
+| `list_accounts` | List configured accounts |
 | `search` | Search files using Drive query syntax |
 | `list` | List files, optionally in a folder |
 | `get` | Get file metadata |
@@ -221,7 +221,7 @@ Add to `~/.config/opencode/opencode.json`:
 
 | Tool | Description |
 |------|-------------|
-| `accounts_list` | List configured accounts |
+| `list_accounts` | List configured accounts |
 | `list_calendars` | List all accessible calendars |
 | `list_events` | List events in a time range |
 | `get_event` | Get event details |

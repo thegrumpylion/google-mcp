@@ -186,11 +186,11 @@ func TestToolNames(t *testing.T) {
 	sort.Strings(got)
 
 	want := []string{
-		"accounts_list",
 		"copy_file",
 		"create_folder",
 		"delete_file",
 		"get_file",
+		"list_accounts",
 		"list_files",
 		"move_file",
 		"read_file",
@@ -221,7 +221,7 @@ func TestToolAnnotations(t *testing.T) {
 	}
 
 	readOnly := []string{
-		"accounts_list", "search_files", "list_files", "get_file", "read_file",
+		"list_accounts", "search_files", "list_files", "get_file", "read_file",
 	}
 	for _, name := range readOnly {
 		tool := toolMap[name]

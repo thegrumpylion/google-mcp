@@ -13,24 +13,34 @@ import (
 )
 
 // Scopes required by the Gmail tools.
-// GmailModifyScope is a superset of GmailReadonlyScope and covers
-// label changes, drafts, and message modifications.
+// MailGoogleComScope grants full access to the mailbox including permanent
+// deletion, settings, send, and all read/write operations. It is a superset
+// of GmailModifyScope, GmailSendScope, and GmailSettingsBasicScope.
 var Scopes = []string{
-	gmail.GmailModifyScope,
-	gmail.GmailSendScope,
+	gmail.MailGoogleComScope,
 }
 
 // RegisterTools registers all Gmail MCP tools on the given server.
 func RegisterTools(server *mcp.Server, mgr *auth.Manager) {
 	auth.RegisterAccountsListTool(server, mgr)
+	registerGetProfile(server, mgr)
 	registerSearch(server, mgr)
 	registerRead(server, mgr)
+	registerListThreads(server, mgr)
 	registerReadThread(server, mgr)
 	registerThreadModify(server, mgr)
+	registerTrashThread(server, mgr)
+	registerUntrashThread(server, mgr)
 	registerSend(server, mgr)
 	registerListLabels(server, mgr)
+	registerGetLabel(server, mgr)
+	registerCreateLabel(server, mgr)
+	registerDeleteLabel(server, mgr)
 	registerModify(server, mgr)
+	registerDeleteMessage(server, mgr)
 	registerGetAttachment(server, mgr)
+	registerGetVacation(server, mgr)
+	registerUpdateVacation(server, mgr)
 	registerDraftCreate(server, mgr)
 	registerDraftList(server, mgr)
 	registerDraftGet(server, mgr)

@@ -75,3 +75,33 @@ Use list_labels to discover custom label IDs.`,
 		}, nil, nil
 	})
 }
+
+// --- gmail_delete_message ---
+
+type deleteMessageInput struct {
+	Account   string `json:"account" jsonschema:"Account name"`
+	MessageID string `json:"message_id" jsonschema:"Gmail message ID to permanently delete"`
+}
+
+func registerDeleteMessage(server *mcp.Server, mgr *auth.Manager) {
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "delete_message",
+		Description: "Permanently delete a Gmail message. This action bypasses the trash and is irreversible. The message cannot be recovered.",
+		Annotations: &mcp.ToolAnnotations{},
+	}, func(ctx context.Context, req *mcp.CallToolRequest, input deleteMessageInput) (*mcp.CallToolResult, any, error) {
+		svc, err := newService(ctx, mgr, input.Account)
+		if err != nil {
+			return nil, nil, fmt.Errorf("creating Gmail service: %w", err)
+		}
+
+		if err := svc.Users.Messages.Delete("me", input.MessageID).Do(); err != nil {
+			return nil, nil, fmt.Errorf("deleting message: %w", err)
+		}
+
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{
+				&mcp.TextContent{Text: fmt.Sprintf("Message %s permanently deleted.", input.MessageID)},
+			},
+		}, nil, nil
+	})
+}
