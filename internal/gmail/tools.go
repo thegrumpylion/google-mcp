@@ -83,7 +83,7 @@ func registerAccountsList(server *mcp.Server, mgr *auth.Manager) {
 type searchInput struct {
 	Account    string `json:"account" jsonschema:"Account name (e.g. 'personal', 'work') or 'all' to search all accounts"`
 	Query      string `json:"query" jsonschema:"Gmail search query (same syntax as Gmail search bar)"`
-	MaxResults int64  `json:"max_results,omitempty" jsonschema:"Maximum number of results per account (default 10, max 50)"`
+	MaxResults int64  `json:"max_results,omitempty" jsonschema:"Maximum number of results per account (default 10, max 500)"`
 }
 
 func registerSearch(server *mcp.Server, mgr *auth.Manager) {
@@ -103,8 +103,8 @@ func registerSearch(server *mcp.Server, mgr *auth.Manager) {
 		if maxResults <= 0 {
 			maxResults = 10
 		}
-		if maxResults > 50 {
-			maxResults = 50
+		if maxResults > 500 {
+			maxResults = 500
 		}
 
 		var sb strings.Builder

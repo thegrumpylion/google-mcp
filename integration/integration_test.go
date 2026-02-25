@@ -499,6 +499,90 @@ func TestGmail_DraftList(t *testing.T) {
 	}
 }
 
+func TestGmail_Modify_ValidationErrors(t *testing.T) {
+	skipIfNoCredentials(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	session := connectServer(ctx, t, "gmail")
+	defer session.Close()
+
+	account := firstAccount(t)
+
+	tests := []struct {
+		name string
+		args map[string]any
+	}{
+		{
+			name: "no message_id or message_ids",
+			args: map[string]any{
+				"account":       account,
+				"remove_labels": []string{"UNREAD"},
+			},
+		},
+		{
+			name: "both message_id and message_ids",
+			args: map[string]any{
+				"account":       account,
+				"message_id":    "fake-id",
+				"message_ids":   []string{"fake-id-1", "fake-id-2"},
+				"remove_labels": []string{"UNREAD"},
+			},
+		},
+		{
+			name: "no labels specified",
+			args: map[string]any{
+				"account":    account,
+				"message_id": "fake-id",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := session.CallTool(ctx, &mcp.CallToolParams{
+				Name:      "modify",
+				Arguments: tt.args,
+			})
+			// Validation errors should come back as tool errors, not nil results.
+			if err == nil && result != nil && !result.IsError {
+				t.Errorf("expected error for %s, got success", tt.name)
+			}
+		})
+	}
+}
+
+func TestGmail_Search_LargeMaxResults(t *testing.T) {
+	skipIfNoCredentials(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	session := connectServer(ctx, t, "gmail")
+	defer session.Close()
+
+	account := firstAccount(t)
+
+	// Request max_results=100, which was previously capped at 50.
+	result, err := session.CallTool(ctx, &mcp.CallToolParams{
+		Name: "search",
+		Arguments: map[string]any{
+			"account":     account,
+			"query":       "newer_than:90d",
+			"max_results": 100,
+		},
+	})
+	if err != nil {
+		t.Fatalf("search with max_results=100: %v", err)
+	}
+
+	text := textContent(t, result)
+	if !strings.Contains(text, "ID:") && !strings.Contains(text, "No messages found") {
+		t.Errorf("unexpected search output: %s", text[:min(len(text), 200)])
+	}
+}
+
 // --- Drive integration tests ---
 
 func TestDrive_ToolsList(t *testing.T) {
