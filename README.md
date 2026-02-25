@@ -228,6 +228,45 @@ google-mcp drive --disable delete_file,empty_trash
 google-mcp drive --read-only --disable list_shared_drives,get_shared_drive
 ```
 
+## Cross-Service Integration
+
+The Gmail server includes built-in Google Drive integration. All data flows server-side — file content never enters the LLM context window.
+
+### Email Attachments
+
+`send_message`, `create_draft`, and `update_draft` support two kinds of attachments:
+
+- **Inline attachments** — base64-encoded content provided directly in the `attachments` field
+- **Drive attachments** — Google Drive file IDs in the `drive_attachments` field, resolved server-side
+
+Drive attachments can reference files from **any configured account**, not just the sending account. For example, you can send an email from your personal Gmail with a file attached from your work Drive — something even Gmail's web UI can't do.
+
+```
+send_message(
+  account="personal",
+  to="colleague@example.com",
+  subject="Q4 Report",
+  body="See attached.",
+  drive_attachments=[{drive_account: "work", file_id: "abc123"}]
+)
+```
+
+The server fetches the file bytes from Drive in memory, encodes them as a MIME attachment, and sends via Gmail. The LLM only sees the file ID and a "Message sent" confirmation.
+
+### Save Attachment to Drive
+
+The `save_attachment_to_drive` tool transfers a Gmail attachment directly to Google Drive. Like Drive attachments, it supports cross-account transfers — save an attachment from one account's inbox to a different account's Drive.
+
+```
+save_attachment_to_drive(
+  account="work",
+  message_id="...",
+  attachment_id="...",
+  drive_account="personal",
+  file_name="invoice.pdf"
+)
+```
+
 ## Available Tools
 
 ### Gmail (26 tools)
