@@ -283,6 +283,8 @@ The server fetches the file bytes from Drive in memory, encodes them as a MIME a
 
 Local file access is **opt-in only** and disabled by default. Use `--allow-read-dir` or `--allow-write-dir` to grant the MCP server access to specific directories. Path containment is enforced by `os.Root` (Go 1.25+) at the kernel level — `../` traversal and symlink escapes are blocked by the OS.
 
+When enabled, two convenience tools — `list_local_files` and `read_local_file` — are automatically added so the LLM can browse and read files in allowed directories. The tool description includes the configured paths and access modes.
+
 ```
 # Gmail: attach local files to emails
 google-mcp gmail --allow-read-dir ~/documents
@@ -403,6 +405,17 @@ save_attachment_to_drive(
 | `update_event` | Update an existing event |
 | `delete_event` | Delete an event |
 | `respond_event` | Respond to an invitation (accept/decline/tentative) |
+
+### Local File Tools (conditional)
+
+These tools appear on **all servers** when `--allow-read-dir` or `--allow-write-dir` is set:
+
+| Tool | Description |
+|------|-------------|
+| `list_local_files` | List files in an allowed local directory |
+| `read_local_file` | Read a text file from an allowed local directory (512 KB limit) |
+
+The `list_local_files` tool description includes the configured directory paths and access modes, so the LLM knows what's available without guessing.
 
 ### Multi-Account Queries
 

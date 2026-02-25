@@ -11,6 +11,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/thegrumpylion/google-mcp/internal/auth"
+	"github.com/thegrumpylion/google-mcp/internal/localfs"
 	"github.com/thegrumpylion/google-mcp/internal/server"
 	gmailapi "google.golang.org/api/gmail/v1"
 )
@@ -731,5 +732,42 @@ func TestBuildMessage_WithAttachments_MultipartOutput(t *testing.T) {
 	}
 	if !strings.Contains(msg, "Content-Disposition: attachment; filename=\"test.txt\"") {
 		t.Error("should contain attachment disposition")
+	}
+}
+
+func TestToolNames_WithLocalFS(t *testing.T) {
+	mgr := newTestManager(t)
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "test.txt"), []byte("x"), 0644)
+
+	lfs, err := localfs.New([]localfs.Dir{
+		{Path: dir, Mode: localfs.ModeRead},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer lfs.Close()
+
+	srv := server.NewServer(&mcp.Implementation{Name: "test-gmail", Version: "test"}, nil)
+	srv.SetLocalFS(lfs)
+	RegisterTools(srv, mgr)
+
+	got := listToolNames(t, srv)
+
+	// Should include all 26 base tools + 2 localfs tools = 28.
+	if len(got) != 28 {
+		t.Fatalf("got %d tools, want 28\ngot: %v", len(got), got)
+	}
+
+	// Verify the localfs tools are present.
+	names := make(map[string]bool)
+	for _, n := range got {
+		names[n] = true
+	}
+	if !names["list_local_files"] {
+		t.Error("expected list_local_files tool")
+	}
+	if !names["read_local_file"] {
+		t.Error("expected read_local_file tool")
 	}
 }

@@ -453,3 +453,167 @@ func TestClose(t *testing.T) {
 		t.Fatal("expected error after close")
 	}
 }
+
+func TestDirs(t *testing.T) {
+	readonlyDir, readwriteDir, _ := setupTestDirs(t)
+
+	fs, err := New([]Dir{
+		{Path: readonlyDir, Mode: ModeRead},
+		{Path: readwriteDir, Mode: ModeReadWrite},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer fs.Close()
+
+	dirs := fs.Dirs()
+	if len(dirs) != 2 {
+		t.Fatalf("got %d dirs, want 2", len(dirs))
+	}
+
+	if dirs[0].Path != readonlyDir {
+		t.Errorf("dirs[0].Path = %q, want %q", dirs[0].Path, readonlyDir)
+	}
+	if dirs[0].Mode != ModeRead {
+		t.Errorf("dirs[0].Mode = %v, want ModeRead", dirs[0].Mode)
+	}
+	if dirs[1].Path != readwriteDir {
+		t.Errorf("dirs[1].Path = %q, want %q", dirs[1].Path, readwriteDir)
+	}
+	if dirs[1].Mode != ModeReadWrite {
+		t.Errorf("dirs[1].Mode = %v, want ModeReadWrite", dirs[1].Mode)
+	}
+}
+
+func TestListDir(t *testing.T) {
+	readonlyDir, readwriteDir, _ := setupTestDirs(t)
+
+	fs, err := New([]Dir{
+		{Path: readonlyDir, Mode: ModeRead},
+		{Path: readwriteDir, Mode: ModeReadWrite},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer fs.Close()
+
+	t.Run("list root of readonly dir", func(t *testing.T) {
+		entries, dir, err := fs.ListDir(".")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if dir != readonlyDir {
+			t.Errorf("got dir %q, want %q", dir, readonlyDir)
+		}
+		// readonly has: file.txt, subdir
+		names := make(map[string]bool)
+		for _, e := range entries {
+			names[e.Name] = true
+		}
+		if !names["file.txt"] {
+			t.Error("expected file.txt in listing")
+		}
+		if !names["subdir"] {
+			t.Error("expected subdir in listing")
+		}
+	})
+
+	t.Run("list empty path defaults to root", func(t *testing.T) {
+		entries, _, err := fs.ListDir("")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(entries) == 0 {
+			t.Error("expected non-empty listing")
+		}
+	})
+
+	t.Run("list subdirectory", func(t *testing.T) {
+		entries, dir, err := fs.ListDir("subdir")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if dir != readonlyDir {
+			t.Errorf("got dir %q, want %q", dir, readonlyDir)
+		}
+		if len(entries) != 1 {
+			t.Fatalf("got %d entries, want 1", len(entries))
+		}
+		if entries[0].Name != "nested.txt" {
+			t.Errorf("got name %q, want %q", entries[0].Name, "nested.txt")
+		}
+		if entries[0].IsDir {
+			t.Error("nested.txt should not be a directory")
+		}
+	})
+
+	t.Run("entry types", func(t *testing.T) {
+		entries, _, err := fs.ListDir(".")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		for _, e := range entries {
+			if e.Name == "subdir" && !e.IsDir {
+				t.Error("subdir should be a directory")
+			}
+			if e.Name == "file.txt" && e.IsDir {
+				t.Error("file.txt should not be a directory")
+			}
+			if e.Name == "file.txt" && e.Size != int64(len("readonly content")) {
+				t.Errorf("file.txt size = %d, want %d", e.Size, len("readonly content"))
+			}
+		}
+	})
+
+	t.Run("traversal denied", func(t *testing.T) {
+		_, _, err := fs.ListDir("../outside")
+		if err == nil {
+			t.Fatal("expected error for path traversal")
+		}
+	})
+
+	t.Run("nonexistent path", func(t *testing.T) {
+		_, _, err := fs.ListDir("nonexistent")
+		if err == nil {
+			t.Fatal("expected error for nonexistent path")
+		}
+	})
+}
+
+func TestListDirDisabled(t *testing.T) {
+	fs, err := New(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer fs.Close()
+
+	_, _, err = fs.ListDir(".")
+	if err == nil {
+		t.Fatal("expected error when FS is disabled")
+	}
+}
+
+func TestListDirFallthrough(t *testing.T) {
+	readonlyDir, readwriteDir, _ := setupTestDirs(t)
+
+	fs, err := New([]Dir{
+		{Path: readonlyDir, Mode: ModeRead},
+		{Path: readwriteDir, Mode: ModeReadWrite},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer fs.Close()
+
+	// "subdir" only exists in readonlyDir. Should find it there.
+	entries, dir, err := fs.ListDir("subdir")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if dir != readonlyDir {
+		t.Errorf("got dir %q, want %q", dir, readonlyDir)
+	}
+	if len(entries) != 1 || entries[0].Name != "nested.txt" {
+		t.Errorf("unexpected entries: %v", entries)
+	}
+}

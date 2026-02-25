@@ -10,6 +10,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/thegrumpylion/google-mcp/internal/auth"
+	"github.com/thegrumpylion/google-mcp/internal/localfs"
 	"github.com/thegrumpylion/google-mcp/internal/server"
 	calendarapi "google.golang.org/api/calendar/v3"
 )
@@ -289,5 +290,46 @@ func TestToolAnnotations(t *testing.T) {
 		if tool.Annotations != nil && tool.Annotations.ReadOnlyHint {
 			t.Errorf("mutation tool %q should not have ReadOnlyHint=true", name)
 		}
+	}
+}
+
+func TestToolNames_WithLocalFS(t *testing.T) {
+	mgr := newTestManager(t)
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "test.txt"), []byte("x"), 0644)
+
+	lfs, err := localfs.New([]localfs.Dir{
+		{Path: dir, Mode: localfs.ModeRead},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer lfs.Close()
+
+	srv := server.NewServer(&mcp.Implementation{Name: "test-calendar", Version: "test"}, nil)
+	srv.SetLocalFS(lfs)
+	RegisterTools(srv, mgr)
+
+	tools := listTools(t, srv)
+	got := make([]string, 0, len(tools))
+	for _, tool := range tools {
+		got = append(got, tool.Name)
+	}
+	sort.Strings(got)
+
+	// Should include all 8 base tools + 2 localfs tools = 10.
+	if len(got) != 10 {
+		t.Fatalf("got %d tools, want 10\ngot: %v", len(got), got)
+	}
+
+	names := make(map[string]bool)
+	for _, n := range got {
+		names[n] = true
+	}
+	if !names["list_local_files"] {
+		t.Error("expected list_local_files tool")
+	}
+	if !names["read_local_file"] {
+		t.Error("expected read_local_file tool")
 	}
 }

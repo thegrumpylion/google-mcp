@@ -27,6 +27,8 @@ Last updated: 2026-02-25
 | Calendar |     8 |                   8 |                38 |      21% |
 | **Total**| **54**|              **53** |           **176** |  **~30%**|
 
+Additionally, 2 **local file tools** (`list_local_files`, `read_local_file`) are conditionally registered on all servers when `--allow-read-dir` or `--allow-write-dir` is set. These are not counted above as they don't map to Google API methods.
+
 ---
 
 ## Gmail

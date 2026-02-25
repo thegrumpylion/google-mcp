@@ -21,6 +21,7 @@ var Scopes = []string{
 // RegisterTools registers all Calendar MCP tools on the given server.
 func RegisterTools(srv *server.Server, mgr *auth.Manager) {
 	server.RegisterAccountsListTool(srv, mgr)
+	server.RegisterLocalFSTools(srv)
 	// calendars.go
 	registerListCalendars(srv, mgr)
 	// events.go

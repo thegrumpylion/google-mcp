@@ -17,6 +17,7 @@ var Scopes = []string{
 // RegisterTools registers all Drive MCP tools on the given server.
 func RegisterTools(srv *server.Server, mgr *auth.Manager) {
 	server.RegisterAccountsListTool(srv, mgr)
+	server.RegisterLocalFSTools(srv)
 	// files.go
 	registerSearch(srv, mgr)
 	registerList(srv, mgr)

@@ -163,6 +163,71 @@ func (fs *FS) WriteFile(path string, data []byte) (string, error) {
 	return "", fmt.Errorf("cannot write %q: %w", path, lastErr)
 }
 
+// DirInfo describes a configured allowed directory.
+type DirInfo struct {
+	Path string
+	Mode Mode
+}
+
+// Dirs returns the list of configured allowed directories.
+func (fs *FS) Dirs() []DirInfo {
+	dirs := make([]DirInfo, len(fs.dirs))
+	for i, d := range fs.dirs {
+		dirs[i] = DirInfo{Path: d.path, Mode: d.mode}
+	}
+	return dirs
+}
+
+// FileEntry describes a single entry in a directory listing.
+type FileEntry struct {
+	Name  string
+	IsDir bool
+	Size  int64
+}
+
+// ListDir lists the contents of a directory within an allowed directory.
+// The path is relative to one of the configured directories.
+// Use "." or "" to list the root of an allowed directory.
+func (fs *FS) ListDir(path string) ([]FileEntry, string, error) {
+	if !fs.Enabled() {
+		return nil, "", fmt.Errorf("local file access is not enabled (use --allow-read-dir or --allow-write-dir)")
+	}
+	if path == "" {
+		path = "."
+	}
+
+	var lastErr error
+	for _, d := range fs.dirs {
+		f, err := d.root.Open(path)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		entries, err := f.ReadDir(-1)
+		f.Close()
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		result := make([]FileEntry, len(entries))
+		for i, e := range entries {
+			info, _ := e.Info()
+			var size int64
+			if info != nil {
+				size = info.Size()
+			}
+			result[i] = FileEntry{
+				Name:  e.Name(),
+				IsDir: e.IsDir(),
+				Size:  size,
+			}
+		}
+		return result, d.path, nil
+	}
+
+	return nil, "", fmt.Errorf("cannot list %q: %w", path, lastErr)
+}
+
 // Stat returns file info from an allowed directory.
 func (fs *FS) Stat(path string) (os.FileInfo, string, error) {
 	if !fs.Enabled() {
