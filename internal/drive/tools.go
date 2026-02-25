@@ -11,6 +11,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/thegrumpylion/google-mcp/internal/auth"
+	"github.com/thegrumpylion/google-mcp/internal/server"
 	"google.golang.org/api/drive/v3"
 )
 
@@ -20,27 +21,27 @@ var Scopes = []string{
 }
 
 // RegisterTools registers all Drive MCP tools on the given server.
-func RegisterTools(server *mcp.Server, mgr *auth.Manager) {
-	auth.RegisterAccountsListTool(server, mgr)
-	registerSearch(server, mgr)
-	registerList(server, mgr)
-	registerGet(server, mgr)
-	registerRead(server, mgr)
-	registerUpload(server, mgr)
-	registerUpdate(server, mgr)
-	registerDelete(server, mgr)
-	registerCreateFolder(server, mgr)
-	registerMove(server, mgr)
-	registerCopy(server, mgr)
-	registerShare(server, mgr)
-	registerListPermissions(server, mgr)
-	registerGetPermission(server, mgr)
-	registerUpdatePermission(server, mgr)
-	registerDeletePermission(server, mgr)
-	registerEmptyTrash(server, mgr)
-	registerGetAbout(server, mgr)
-	registerListSharedDrives(server, mgr)
-	registerGetSharedDrive(server, mgr)
+func RegisterTools(srv *server.Server, mgr *auth.Manager) {
+	server.RegisterAccountsListTool(srv, mgr)
+	registerSearch(srv, mgr)
+	registerList(srv, mgr)
+	registerGet(srv, mgr)
+	registerRead(srv, mgr)
+	registerUpload(srv, mgr)
+	registerUpdate(srv, mgr)
+	registerDelete(srv, mgr)
+	registerCreateFolder(srv, mgr)
+	registerMove(srv, mgr)
+	registerCopy(srv, mgr)
+	registerShare(srv, mgr)
+	registerListPermissions(srv, mgr)
+	registerGetPermission(srv, mgr)
+	registerUpdatePermission(srv, mgr)
+	registerDeletePermission(srv, mgr)
+	registerEmptyTrash(srv, mgr)
+	registerGetAbout(srv, mgr)
+	registerListSharedDrives(srv, mgr)
+	registerGetSharedDrive(srv, mgr)
 }
 
 func newService(ctx context.Context, mgr *auth.Manager, account string) (*drive.Service, error) {
@@ -59,8 +60,8 @@ type searchInput struct {
 	MaxResults int64  `json:"max_results,omitempty" jsonschema:"Maximum number of results per account (default 10, max 50)"`
 }
 
-func registerSearch(server *mcp.Server, mgr *auth.Manager) {
-	mcp.AddTool(server, &mcp.Tool{
+func registerSearch(srv *server.Server, mgr *auth.Manager) {
+	server.AddTool(srv, &mcp.Tool{
 		Name:        "search_files",
 		Description: "Search Google Drive files using Drive query syntax. Set account to 'all' to search across all accounts. Returns file IDs, names, and metadata.",
 		Annotations: &mcp.ToolAnnotations{
@@ -140,8 +141,8 @@ type listInput struct {
 	OrderBy    string `json:"order_by,omitempty" jsonschema:"Sort order (e.g. 'modifiedTime desc', 'name'). Default: 'modifiedTime desc'"`
 }
 
-func registerList(server *mcp.Server, mgr *auth.Manager) {
-	mcp.AddTool(server, &mcp.Tool{
+func registerList(srv *server.Server, mgr *auth.Manager) {
+	server.AddTool(srv, &mcp.Tool{
 		Name:        "list_files",
 		Description: "List files in Google Drive, optionally within a specific folder. Set account to 'all' to list from all accounts. Returns file IDs, names, and metadata.",
 		Annotations: &mcp.ToolAnnotations{
@@ -231,8 +232,8 @@ type getInput struct {
 	FileID  string `json:"file_id" jsonschema:"Google Drive file ID"`
 }
 
-func registerGet(server *mcp.Server, mgr *auth.Manager) {
-	mcp.AddTool(server, &mcp.Tool{
+func registerGet(srv *server.Server, mgr *auth.Manager) {
+	server.AddTool(srv, &mcp.Tool{
 		Name:        "get_file",
 		Description: "Get metadata for a specific Google Drive file by ID.",
 		Annotations: &mcp.ToolAnnotations{
@@ -296,8 +297,8 @@ type readInput struct {
 	ExportMIMEType string `json:"export_mime_type,omitempty" jsonschema:"MIME type to export Google Docs/Sheets/Slides as (e.g. 'text/plain', 'text/csv', 'application/pdf'). Required for Google Workspace files."`
 }
 
-func registerRead(server *mcp.Server, mgr *auth.Manager) {
-	mcp.AddTool(server, &mcp.Tool{
+func registerRead(srv *server.Server, mgr *auth.Manager) {
+	server.AddTool(srv, &mcp.Tool{
 		Name:        "read_file",
 		Description: "Read/download the content of a Google Drive file. For Google Docs/Sheets/Slides, specify export_mime_type to choose the export format (e.g. 'text/plain'). Returns text content directly for text files, or base64 for binary files. Content is truncated at 512 KB for large files.",
 		Annotations: &mcp.ToolAnnotations{
@@ -375,11 +376,11 @@ type uploadInput struct {
 	Base64   bool   `json:"base64,omitempty" jsonschema:"Set to true if content is base64-encoded binary data"`
 }
 
-func registerUpload(server *mcp.Server, mgr *auth.Manager) {
-	mcp.AddTool(server, &mcp.Tool{
+func registerUpload(srv *server.Server, mgr *auth.Manager) {
+	server.AddTool(srv, &mcp.Tool{
 		Name: "upload_file",
 		Annotations: &mcp.ToolAnnotations{
-			DestructiveHint: auth.BoolPtr(false),
+			DestructiveHint: server.BoolPtr(false),
 		},
 		Description: `Upload a new file to Google Drive. Provide content as plain text or base64-encoded binary.
 
@@ -445,8 +446,8 @@ type updateInput struct {
 	MIMEType    string `json:"mime_type,omitempty" jsonschema:"New MIME type (leave empty to keep current)"`
 }
 
-func registerUpdate(server *mcp.Server, mgr *auth.Manager) {
-	mcp.AddTool(server, &mcp.Tool{
+func registerUpdate(srv *server.Server, mgr *auth.Manager) {
+	server.AddTool(srv, &mcp.Tool{
 		Name: "update_file",
 		Annotations: &mcp.ToolAnnotations{
 			IdempotentHint: true,
@@ -503,8 +504,8 @@ type deleteInput struct {
 	Permanently bool   `json:"permanently,omitempty" jsonschema:"If true, permanently delete instead of moving to trash (default: false, moves to trash)"`
 }
 
-func registerDelete(server *mcp.Server, mgr *auth.Manager) {
-	mcp.AddTool(server, &mcp.Tool{
+func registerDelete(srv *server.Server, mgr *auth.Manager) {
+	server.AddTool(srv, &mcp.Tool{
 		Name:        "delete_file",
 		Annotations: &mcp.ToolAnnotations{},
 		Description: `Delete a file from Google Drive. By default, moves the file to trash.
@@ -552,11 +553,11 @@ type createFolderInput struct {
 	FolderID string `json:"folder_id,omitempty" jsonschema:"Parent folder ID (default: root)"`
 }
 
-func registerCreateFolder(server *mcp.Server, mgr *auth.Manager) {
-	mcp.AddTool(server, &mcp.Tool{
+func registerCreateFolder(srv *server.Server, mgr *auth.Manager) {
+	server.AddTool(srv, &mcp.Tool{
 		Name: "create_folder",
 		Annotations: &mcp.ToolAnnotations{
-			DestructiveHint: auth.BoolPtr(false),
+			DestructiveHint: server.BoolPtr(false),
 		},
 		Description: "Create a new folder in Google Drive, optionally inside an existing folder.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input createFolderInput) (*mcp.CallToolResult, any, error) {
@@ -602,8 +603,8 @@ type moveInput struct {
 	FolderID string `json:"folder_id" jsonschema:"Destination folder ID"`
 }
 
-func registerMove(server *mcp.Server, mgr *auth.Manager) {
-	mcp.AddTool(server, &mcp.Tool{
+func registerMove(srv *server.Server, mgr *auth.Manager) {
+	server.AddTool(srv, &mcp.Tool{
 		Name: "move_file",
 		Annotations: &mcp.ToolAnnotations{
 			IdempotentHint: true,
@@ -649,11 +650,11 @@ type copyInput struct {
 	FolderID string `json:"folder_id,omitempty" jsonschema:"Destination folder ID for the copy (default: same folder)"`
 }
 
-func registerCopy(server *mcp.Server, mgr *auth.Manager) {
-	mcp.AddTool(server, &mcp.Tool{
+func registerCopy(srv *server.Server, mgr *auth.Manager) {
+	server.AddTool(srv, &mcp.Tool{
 		Name: "copy_file",
 		Annotations: &mcp.ToolAnnotations{
-			DestructiveHint: auth.BoolPtr(false),
+			DestructiveHint: server.BoolPtr(false),
 		},
 		Description: "Create a copy of a file in Google Drive, optionally with a new name or in a different folder.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input copyInput) (*mcp.CallToolResult, any, error) {
@@ -709,11 +710,11 @@ type shareInput struct {
 	Message      string `json:"message,omitempty" jsonschema:"Custom message to include in the notification email"`
 }
 
-func registerShare(server *mcp.Server, mgr *auth.Manager) {
-	mcp.AddTool(server, &mcp.Tool{
+func registerShare(srv *server.Server, mgr *auth.Manager) {
+	server.AddTool(srv, &mcp.Tool{
 		Name: "share_file",
 		Annotations: &mcp.ToolAnnotations{
-			DestructiveHint: auth.BoolPtr(false),
+			DestructiveHint: server.BoolPtr(false),
 			IdempotentHint:  true,
 		},
 		Description: `Share a Google Drive file by adding permissions.

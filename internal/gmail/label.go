@@ -6,6 +6,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/thegrumpylion/google-mcp/internal/auth"
+	"github.com/thegrumpylion/google-mcp/internal/server"
 	gmailapi "google.golang.org/api/gmail/v1"
 )
 
@@ -16,8 +17,8 @@ type getLabelInput struct {
 	LabelID string `json:"label_id" jsonschema:"Label ID (from list_labels)"`
 }
 
-func registerGetLabel(server *mcp.Server, mgr *auth.Manager) {
-	mcp.AddTool(server, &mcp.Tool{
+func registerGetLabel(srv *server.Server, mgr *auth.Manager) {
+	server.AddTool(srv, &mcp.Tool{
 		Name:        "get_label",
 		Description: "Get details of a Gmail label including unread and total message/thread counts. Use list_labels to discover label IDs.",
 		Annotations: &mcp.ToolAnnotations{
@@ -57,12 +58,12 @@ type createLabelInput struct {
 	MessageListVisibility string `json:"message_list_visibility,omitempty" jsonschema:"Visibility in message list: show or hide (default: show)"`
 }
 
-func registerCreateLabel(server *mcp.Server, mgr *auth.Manager) {
-	mcp.AddTool(server, &mcp.Tool{
+func registerCreateLabel(srv *server.Server, mgr *auth.Manager) {
+	server.AddTool(srv, &mcp.Tool{
 		Name:        "create_label",
 		Description: "Create a custom Gmail label for organizing email. Use '/' in the name for nested labels (e.g. 'Projects/Work').",
 		Annotations: &mcp.ToolAnnotations{
-			DestructiveHint: auth.BoolPtr(false),
+			DestructiveHint: server.BoolPtr(false),
 		},
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input createLabelInput) (*mcp.CallToolResult, any, error) {
 		if input.Name == "" {
@@ -105,8 +106,8 @@ type deleteLabelInput struct {
 	LabelID string `json:"label_id" jsonschema:"Label ID to delete (from list_labels). System labels cannot be deleted."`
 }
 
-func registerDeleteLabel(server *mcp.Server, mgr *auth.Manager) {
-	mcp.AddTool(server, &mcp.Tool{
+func registerDeleteLabel(srv *server.Server, mgr *auth.Manager) {
+	server.AddTool(srv, &mcp.Tool{
 		Name:        "delete_label",
 		Description: "Delete a custom Gmail label. System labels (INBOX, SENT, etc.) cannot be deleted. Messages with this label are not deleted, only the label is removed.",
 		Annotations: &mcp.ToolAnnotations{},

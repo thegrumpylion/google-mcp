@@ -7,6 +7,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/thegrumpylion/google-mcp/internal/auth"
+	"github.com/thegrumpylion/google-mcp/internal/server"
 	gmailapi "google.golang.org/api/gmail/v1"
 )
 
@@ -19,8 +20,8 @@ type listThreadsInput struct {
 	LabelIDs   []string `json:"label_ids,omitempty" jsonschema:"Only return threads with all of these label IDs"`
 }
 
-func registerListThreads(server *mcp.Server, mgr *auth.Manager) {
-	mcp.AddTool(server, &mcp.Tool{
+func registerListThreads(srv *server.Server, mgr *auth.Manager) {
+	server.AddTool(srv, &mcp.Tool{
 		Name:        "list_threads",
 		Description: "List Gmail threads. Supports query filtering with Gmail search syntax, label filtering, and multi-account search. Returns thread IDs, snippets, and message counts.",
 		Annotations: &mcp.ToolAnnotations{
@@ -127,8 +128,8 @@ type readThreadInput struct {
 	ThreadID string `json:"thread_id" jsonschema:"Gmail thread ID (from search or read results)"`
 }
 
-func registerReadThread(server *mcp.Server, mgr *auth.Manager) {
-	mcp.AddTool(server, &mcp.Tool{
+func registerReadThread(srv *server.Server, mgr *auth.Manager) {
+	server.AddTool(srv, &mcp.Tool{
 		Name:        "read_thread",
 		Description: "Read all messages in a Gmail thread/conversation by thread ID. Returns each message with headers and body text in chronological order.",
 		Annotations: &mcp.ToolAnnotations{
@@ -200,8 +201,8 @@ type threadModifyInput struct {
 	RemoveLabels []string `json:"remove_labels,omitempty" jsonschema:"Label IDs to remove (e.g. 'UNREAD', 'INBOX', 'STARRED')"`
 }
 
-func registerThreadModify(server *mcp.Server, mgr *auth.Manager) {
-	mcp.AddTool(server, &mcp.Tool{
+func registerThreadModify(srv *server.Server, mgr *auth.Manager) {
+	server.AddTool(srv, &mcp.Tool{
 		Name: "modify_thread",
 		Annotations: &mcp.ToolAnnotations{
 			IdempotentHint: true,
@@ -251,8 +252,8 @@ type trashThreadInput struct {
 	ThreadID string `json:"thread_id" jsonschema:"Gmail thread ID to trash"`
 }
 
-func registerTrashThread(server *mcp.Server, mgr *auth.Manager) {
-	mcp.AddTool(server, &mcp.Tool{
+func registerTrashThread(srv *server.Server, mgr *auth.Manager) {
+	server.AddTool(srv, &mcp.Tool{
 		Name:        "trash_thread",
 		Description: "Move a Gmail thread to the trash. The thread will be permanently deleted after 30 days. Use untrash_thread to restore.",
 		Annotations: &mcp.ToolAnnotations{},
@@ -282,12 +283,12 @@ type untrashThreadInput struct {
 	ThreadID string `json:"thread_id" jsonschema:"Gmail thread ID to restore from trash"`
 }
 
-func registerUntrashThread(server *mcp.Server, mgr *auth.Manager) {
-	mcp.AddTool(server, &mcp.Tool{
+func registerUntrashThread(srv *server.Server, mgr *auth.Manager) {
+	server.AddTool(srv, &mcp.Tool{
 		Name:        "untrash_thread",
 		Description: "Restore a Gmail thread from the trash back to the inbox.",
 		Annotations: &mcp.ToolAnnotations{
-			DestructiveHint: auth.BoolPtr(false),
+			DestructiveHint: server.BoolPtr(false),
 		},
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input untrashThreadInput) (*mcp.CallToolResult, any, error) {
 		svc, err := newService(ctx, mgr, input.Account)

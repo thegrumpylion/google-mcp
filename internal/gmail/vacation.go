@@ -7,6 +7,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/thegrumpylion/google-mcp/internal/auth"
+	"github.com/thegrumpylion/google-mcp/internal/server"
 )
 
 // --- gmail_get_vacation ---
@@ -15,8 +16,8 @@ type getVacationInput struct {
 	Account string `json:"account" jsonschema:"Account name"`
 }
 
-func registerGetVacation(server *mcp.Server, mgr *auth.Manager) {
-	mcp.AddTool(server, &mcp.Tool{
+func registerGetVacation(srv *server.Server, mgr *auth.Manager) {
+	server.AddTool(srv, &mcp.Tool{
 		Name:        "get_vacation",
 		Description: "Get the Gmail vacation/out-of-office auto-reply settings for an account.",
 		Annotations: &mcp.ToolAnnotations{
@@ -70,8 +71,8 @@ type updateVacationInput struct {
 	RestrictToDomain   *bool  `json:"restrict_to_domain,omitempty" jsonschema:"Only send auto-reply to same domain"`
 }
 
-func registerUpdateVacation(server *mcp.Server, mgr *auth.Manager) {
-	mcp.AddTool(server, &mcp.Tool{
+func registerUpdateVacation(srv *server.Server, mgr *auth.Manager) {
+	server.AddTool(srv, &mcp.Tool{
 		Name:        "update_vacation",
 		Description: "Update Gmail vacation/out-of-office auto-reply settings. Set enable_auto_reply to true/false to toggle. Provide response_subject and response_body for the auto-reply message.",
 		Annotations: &mcp.ToolAnnotations{

@@ -7,6 +7,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/thegrumpylion/google-mcp/internal/auth"
+	"github.com/thegrumpylion/google-mcp/internal/server"
 )
 
 // --- gmail_get_profile ---
@@ -15,8 +16,8 @@ type getProfileInput struct {
 	Account string `json:"account" jsonschema:"Account name or 'all' for all accounts"`
 }
 
-func registerGetProfile(server *mcp.Server, mgr *auth.Manager) {
-	mcp.AddTool(server, &mcp.Tool{
+func registerGetProfile(srv *server.Server, mgr *auth.Manager) {
+	server.AddTool(srv, &mcp.Tool{
 		Name:        "get_profile",
 		Description: "Get the authenticated user's Gmail profile. Returns email address, total messages, total threads, and current history ID.",
 		Annotations: &mcp.ToolAnnotations{

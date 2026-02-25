@@ -7,6 +7,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/thegrumpylion/google-mcp/internal/auth"
+	"github.com/thegrumpylion/google-mcp/internal/server"
 )
 
 // --- get_about ---
@@ -15,8 +16,8 @@ type getAboutInput struct {
 	Account string `json:"account" jsonschema:"Account name"`
 }
 
-func registerGetAbout(server *mcp.Server, mgr *auth.Manager) {
-	mcp.AddTool(server, &mcp.Tool{
+func registerGetAbout(srv *server.Server, mgr *auth.Manager) {
+	server.AddTool(srv, &mcp.Tool{
 		Name:        "get_about",
 		Description: "Get Google Drive account information including storage quota, user details, and supported export formats.",
 		Annotations: &mcp.ToolAnnotations{

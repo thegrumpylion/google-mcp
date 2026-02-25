@@ -12,6 +12,7 @@ import (
 	"github.com/thegrumpylion/google-mcp/internal/calendar"
 	"github.com/thegrumpylion/google-mcp/internal/drive"
 	"github.com/thegrumpylion/google-mcp/internal/gmail"
+	"github.com/thegrumpylion/google-mcp/internal/server"
 )
 
 var (
@@ -164,80 +165,134 @@ func newAuthRemoveCmd() *cobra.Command {
 
 // --- MCP server commands ---
 
+// toolFilterFlags holds the CLI flags for tool filtering.
+type toolFilterFlags struct {
+	readOnly bool
+	enable   []string
+	disable  []string
+}
+
+// addToolFilterFlags adds --read-only, --enable, and --disable flags to a command.
+func addToolFilterFlags(cmd *cobra.Command, f *toolFilterFlags) {
+	cmd.Flags().BoolVar(&f.readOnly, "read-only", false, "only expose read-only tools (no mutations)")
+	cmd.Flags().StringSliceVar(&f.enable, "enable", nil, "whitelist of tool names to expose (comma-separated)")
+	cmd.Flags().StringSliceVar(&f.disable, "disable", nil, "blacklist of tool names to hide (comma-separated)")
+	cmd.MarkFlagsMutuallyExclusive("enable", "disable")
+}
+
+// toToolFilter converts the CLI flags to an server.ToolFilter.
+func (f *toolFilterFlags) toToolFilter() server.ToolFilter {
+	return server.ToolFilter{
+		ReadOnly: f.readOnly,
+		Enable:   f.enable,
+		Disable:  f.disable,
+	}
+}
+
 func newGmailCmd() *cobra.Command {
-	return &cobra.Command{
+	var flags toolFilterFlags
+	cmd := &cobra.Command{
 		Use:   "gmail",
 		Short: "Start the Gmail MCP server (stdio)",
 		Long: `Starts an MCP server over stdio with Gmail tools:
   list_accounts, search_messages, read_message, read_thread, send_message,
   list_labels, modify_messages, get_attachment,
-  create_draft, list_drafts, send_draft, and more.`,
+  create_draft, list_drafts, send_draft, and more.
+
+Use --read-only to expose only read-only tools.
+Use --enable or --disable for granular tool control.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			mgr, err := newManager()
 			if err != nil {
 				return err
 			}
 
-			server := mcp.NewServer(&mcp.Implementation{
+			server := server.NewServer(&mcp.Implementation{
 				Name:    "google-mcp-gmail",
 				Version: version,
 			}, nil)
 
 			gmail.RegisterTools(server, mgr)
 
+			if err := server.ApplyFilter(flags.toToolFilter()); err != nil {
+				return err
+			}
+
 			return server.Run(context.Background(), &mcp.StdioTransport{})
 		},
 	}
+	addToolFilterFlags(cmd, &flags)
+	return cmd
 }
 
 func newDriveCmd() *cobra.Command {
-	return &cobra.Command{
+	var flags toolFilterFlags
+	cmd := &cobra.Command{
 		Use:   "drive",
 		Short: "Start the Google Drive MCP server (stdio)",
 		Long: `Starts an MCP server over stdio with Drive tools:
   list_accounts, search_files, list_files, get_file, read_file, upload_file,
-  update_file, delete_file, create_folder, move_file, copy_file, share_file.`,
+  update_file, delete_file, create_folder, move_file, copy_file, share_file.
+
+Use --read-only to expose only read-only tools.
+Use --enable or --disable for granular tool control.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			mgr, err := newManager()
 			if err != nil {
 				return err
 			}
 
-			server := mcp.NewServer(&mcp.Implementation{
+			server := server.NewServer(&mcp.Implementation{
 				Name:    "google-mcp-drive",
 				Version: version,
 			}, nil)
 
 			drive.RegisterTools(server, mgr)
 
+			if err := server.ApplyFilter(flags.toToolFilter()); err != nil {
+				return err
+			}
+
 			return server.Run(context.Background(), &mcp.StdioTransport{})
 		},
 	}
+	addToolFilterFlags(cmd, &flags)
+	return cmd
 }
 
 func newCalendarCmd() *cobra.Command {
-	return &cobra.Command{
+	var flags toolFilterFlags
+	cmd := &cobra.Command{
 		Use:   "calendar",
 		Short: "Start the Google Calendar MCP server (stdio)",
 		Long: `Starts an MCP server over stdio with Calendar tools:
   list_accounts, list_calendars, list_events, get_event,
-  create_event, update_event, delete_event, respond_event.`,
+  create_event, update_event, delete_event, respond_event.
+
+Use --read-only to expose only read-only tools.
+Use --enable or --disable for granular tool control.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			mgr, err := newManager()
 			if err != nil {
 				return err
 			}
 
-			server := mcp.NewServer(&mcp.Implementation{
+			server := server.NewServer(&mcp.Implementation{
 				Name:    "google-mcp-calendar",
 				Version: version,
 			}, nil)
 
 			calendar.RegisterTools(server, mgr)
 
+			if err := server.ApplyFilter(flags.toToolFilter()); err != nil {
+				return err
+			}
+
 			return server.Run(context.Background(), &mcp.StdioTransport{})
 		},
 	}
+	addToolFilterFlags(cmd, &flags)
+	return cmd
 }
 
 // --- helpers ---

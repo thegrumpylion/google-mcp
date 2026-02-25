@@ -6,6 +6,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/thegrumpylion/google-mcp/internal/auth"
+	"github.com/thegrumpylion/google-mcp/internal/server"
 )
 
 // --- empty_trash ---
@@ -14,8 +15,8 @@ type emptyTrashInput struct {
 	Account string `json:"account" jsonschema:"Account name"`
 }
 
-func registerEmptyTrash(server *mcp.Server, mgr *auth.Manager) {
-	mcp.AddTool(server, &mcp.Tool{
+func registerEmptyTrash(srv *server.Server, mgr *auth.Manager) {
+	server.AddTool(srv, &mcp.Tool{
 		Name:        "empty_trash",
 		Description: "Permanently delete all files in the Google Drive trash. This action cannot be undone.",
 		Annotations: &mcp.ToolAnnotations{},

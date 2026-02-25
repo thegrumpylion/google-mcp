@@ -7,6 +7,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/thegrumpylion/google-mcp/internal/auth"
+	"github.com/thegrumpylion/google-mcp/internal/server"
 	gmailapi "google.golang.org/api/gmail/v1"
 )
 
@@ -18,11 +19,11 @@ type draftCreateInput struct {
 	ReplyToMessageID string `json:"reply_to_message_id,omitempty" jsonschema:"Message ID to reply to (sets In-Reply-To and References headers, keeps thread)"`
 }
 
-func registerDraftCreate(server *mcp.Server, mgr *auth.Manager) {
-	mcp.AddTool(server, &mcp.Tool{
+func registerDraftCreate(srv *server.Server, mgr *auth.Manager) {
+	server.AddTool(srv, &mcp.Tool{
 		Name: "create_draft",
 		Annotations: &mcp.ToolAnnotations{
-			DestructiveHint: auth.BoolPtr(false),
+			DestructiveHint: server.BoolPtr(false),
 		},
 		Description: "Create a Gmail draft. The draft is saved but not sent. Use send_draft to send it later, or list_drafts to see all drafts.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input draftCreateInput) (*mcp.CallToolResult, any, error) {
@@ -64,8 +65,8 @@ type draftListInput struct {
 	MaxResults int64  `json:"max_results,omitempty" jsonschema:"Maximum number of drafts per account (default 20, max 100)"`
 }
 
-func registerDraftList(server *mcp.Server, mgr *auth.Manager) {
-	mcp.AddTool(server, &mcp.Tool{
+func registerDraftList(srv *server.Server, mgr *auth.Manager) {
+	server.AddTool(srv, &mcp.Tool{
 		Name:        "list_drafts",
 		Description: "List Gmail drafts. Set account to 'all' to list from all accounts. Returns draft IDs and message snippets.",
 		Annotations: &mcp.ToolAnnotations{
@@ -164,8 +165,8 @@ type draftGetInput struct {
 	DraftID string `json:"draft_id" jsonschema:"Draft ID to read (from draft_list or draft_create)"`
 }
 
-func registerDraftGet(server *mcp.Server, mgr *auth.Manager) {
-	mcp.AddTool(server, &mcp.Tool{
+func registerDraftGet(srv *server.Server, mgr *auth.Manager) {
+	server.AddTool(srv, &mcp.Tool{
 		Name:        "get_draft",
 		Description: "Read the full content of a Gmail draft by ID. Returns headers, body text, and draft metadata.",
 		Annotations: &mcp.ToolAnnotations{
@@ -219,8 +220,8 @@ type draftUpdateInput struct {
 	composeInput
 }
 
-func registerDraftUpdate(server *mcp.Server, mgr *auth.Manager) {
-	mcp.AddTool(server, &mcp.Tool{
+func registerDraftUpdate(srv *server.Server, mgr *auth.Manager) {
+	server.AddTool(srv, &mcp.Tool{
 		Name: "update_draft",
 		Annotations: &mcp.ToolAnnotations{
 			IdempotentHint: true,
@@ -264,8 +265,8 @@ type draftDeleteInput struct {
 	DraftID string `json:"draft_id" jsonschema:"Draft ID to delete (from draft_list or draft_create)"`
 }
 
-func registerDraftDelete(server *mcp.Server, mgr *auth.Manager) {
-	mcp.AddTool(server, &mcp.Tool{
+func registerDraftDelete(srv *server.Server, mgr *auth.Manager) {
+	server.AddTool(srv, &mcp.Tool{
 		Name:        "delete_draft",
 		Annotations: &mcp.ToolAnnotations{},
 		Description: "Delete a Gmail draft permanently. The draft message is removed and cannot be recovered.",
@@ -294,8 +295,8 @@ type draftSendInput struct {
 	DraftID string `json:"draft_id" jsonschema:"Draft ID to send (from draft_list or draft_create)"`
 }
 
-func registerDraftSend(server *mcp.Server, mgr *auth.Manager) {
-	mcp.AddTool(server, &mcp.Tool{
+func registerDraftSend(srv *server.Server, mgr *auth.Manager) {
+	server.AddTool(srv, &mcp.Tool{
 		Name:        "send_draft",
 		Annotations: &mcp.ToolAnnotations{},
 		Description: "Send an existing Gmail draft. The draft is removed after sending.",

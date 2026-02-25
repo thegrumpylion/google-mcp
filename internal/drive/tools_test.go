@@ -10,6 +10,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/thegrumpylion/google-mcp/internal/auth"
+	"github.com/thegrumpylion/google-mcp/internal/server"
 	driveapi "google.golang.org/api/drive/v3"
 )
 
@@ -29,7 +30,7 @@ func newTestManager(t *testing.T) *auth.Manager {
 
 func TestRegisterTools(t *testing.T) {
 	mgr := newTestManager(t)
-	server := mcp.NewServer(&mcp.Implementation{Name: "test-drive", Version: "test"}, nil)
+	server := server.NewServer(&mcp.Implementation{Name: "test-drive", Version: "test"}, nil)
 	RegisterTools(server, mgr)
 }
 
@@ -207,15 +208,15 @@ func TestAccountScopes(t *testing.T) {
 	}
 }
 
-func newTestServer(t *testing.T) *mcp.Server {
+func newTestServer(t *testing.T) *server.Server {
 	t.Helper()
 	mgr := newTestManager(t)
-	server := mcp.NewServer(&mcp.Implementation{Name: "test-drive", Version: "test"}, nil)
+	server := server.NewServer(&mcp.Implementation{Name: "test-drive", Version: "test"}, nil)
 	RegisterTools(server, mgr)
 	return server
 }
 
-func connect(t *testing.T, server *mcp.Server) *mcp.ClientSession {
+func connect(t *testing.T, server *server.Server) *mcp.ClientSession {
 	t.Helper()
 	ctx := context.Background()
 	serverTransport, clientTransport := mcp.NewInMemoryTransports()
@@ -234,7 +235,7 @@ func connect(t *testing.T, server *mcp.Server) *mcp.ClientSession {
 	return session
 }
 
-func listTools(t *testing.T, server *mcp.Server) []*mcp.Tool {
+func listTools(t *testing.T, server *server.Server) []*mcp.Tool {
 	t.Helper()
 	ctx := context.Background()
 	session := connect(t, server)

@@ -7,6 +7,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/thegrumpylion/google-mcp/internal/auth"
+	"github.com/thegrumpylion/google-mcp/internal/server"
 	"google.golang.org/api/drive/v3"
 )
 
@@ -17,8 +18,8 @@ type listPermissionsInput struct {
 	FileID  string `json:"file_id" jsonschema:"Google Drive file or folder ID"`
 }
 
-func registerListPermissions(server *mcp.Server, mgr *auth.Manager) {
-	mcp.AddTool(server, &mcp.Tool{
+func registerListPermissions(srv *server.Server, mgr *auth.Manager) {
+	server.AddTool(srv, &mcp.Tool{
 		Name:        "list_permissions",
 		Description: "List all permissions (sharing settings) for a Google Drive file or folder. Shows who has access and their role.",
 		Annotations: &mcp.ToolAnnotations{
@@ -73,8 +74,8 @@ type getPermissionInput struct {
 	PermissionID string `json:"permission_id" jsonschema:"Permission ID to inspect"`
 }
 
-func registerGetPermission(server *mcp.Server, mgr *auth.Manager) {
-	mcp.AddTool(server, &mcp.Tool{
+func registerGetPermission(srv *server.Server, mgr *auth.Manager) {
+	server.AddTool(srv, &mcp.Tool{
 		Name:        "get_permission",
 		Description: "Get details of a specific permission on a Google Drive file or folder.",
 		Annotations: &mcp.ToolAnnotations{
@@ -118,8 +119,8 @@ type updatePermissionInput struct {
 	Role         string `json:"role" jsonschema:"New role: 'reader', 'commenter', 'writer', or 'organizer'"`
 }
 
-func registerUpdatePermission(server *mcp.Server, mgr *auth.Manager) {
-	mcp.AddTool(server, &mcp.Tool{
+func registerUpdatePermission(srv *server.Server, mgr *auth.Manager) {
+	server.AddTool(srv, &mcp.Tool{
 		Name: "update_permission",
 		Description: `Update a permission on a Google Drive file or folder. Use this to change the access level (role) for an existing permission.
 
@@ -182,8 +183,8 @@ type deletePermissionInput struct {
 	PermissionID string `json:"permission_id" jsonschema:"Permission ID to delete (revoke access)"`
 }
 
-func registerDeletePermission(server *mcp.Server, mgr *auth.Manager) {
-	mcp.AddTool(server, &mcp.Tool{
+func registerDeletePermission(srv *server.Server, mgr *auth.Manager) {
+	server.AddTool(srv, &mcp.Tool{
 		Name:        "delete_permission",
 		Description: "Delete a permission from a Google Drive file or folder, revoking access for that user, group, or domain.",
 		Annotations: &mcp.ToolAnnotations{},

@@ -9,6 +9,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/thegrumpylion/google-mcp/internal/auth"
+	"github.com/thegrumpylion/google-mcp/internal/server"
 	"google.golang.org/api/calendar/v3"
 )
 
@@ -19,15 +20,15 @@ var Scopes = []string{
 }
 
 // RegisterTools registers all Calendar MCP tools on the given server.
-func RegisterTools(server *mcp.Server, mgr *auth.Manager) {
-	auth.RegisterAccountsListTool(server, mgr)
-	registerListCalendars(server, mgr)
-	registerListEvents(server, mgr)
-	registerGetEvent(server, mgr)
-	registerCreateEvent(server, mgr)
-	registerUpdateEvent(server, mgr)
-	registerDeleteEvent(server, mgr)
-	registerRespondEvent(server, mgr)
+func RegisterTools(srv *server.Server, mgr *auth.Manager) {
+	server.RegisterAccountsListTool(srv, mgr)
+	registerListCalendars(srv, mgr)
+	registerListEvents(srv, mgr)
+	registerGetEvent(srv, mgr)
+	registerCreateEvent(srv, mgr)
+	registerUpdateEvent(srv, mgr)
+	registerDeleteEvent(srv, mgr)
+	registerRespondEvent(srv, mgr)
 }
 
 func newService(ctx context.Context, mgr *auth.Manager, account string) (*calendar.Service, error) {
@@ -44,8 +45,8 @@ type listCalendarsInput struct {
 	Account string `json:"account" jsonschema:"Account name or 'all' for all accounts"`
 }
 
-func registerListCalendars(server *mcp.Server, mgr *auth.Manager) {
-	mcp.AddTool(server, &mcp.Tool{
+func registerListCalendars(srv *server.Server, mgr *auth.Manager) {
+	server.AddTool(srv, &mcp.Tool{
 		Name:        "list_calendars",
 		Description: "List all calendars accessible by the account. Set account to 'all' to list calendars from all accounts. Returns calendar IDs and names.",
 		Annotations: &mcp.ToolAnnotations{
@@ -115,8 +116,8 @@ type listEventsInput struct {
 	MaxResults int64  `json:"max_results,omitempty" jsonschema:"Maximum number of events per account (default 20, max 100)"`
 }
 
-func registerListEvents(server *mcp.Server, mgr *auth.Manager) {
-	mcp.AddTool(server, &mcp.Tool{
+func registerListEvents(srv *server.Server, mgr *auth.Manager) {
+	server.AddTool(srv, &mcp.Tool{
 		Name:        "list_events",
 		Description: "List events from a Google Calendar within a time range. Set account to 'all' to list events from all accounts. Defaults to upcoming events in the next 7 days.",
 		Annotations: &mcp.ToolAnnotations{
@@ -221,8 +222,8 @@ type getEventInput struct {
 	EventID    string `json:"event_id" jsonschema:"Event ID to retrieve"`
 }
 
-func registerGetEvent(server *mcp.Server, mgr *auth.Manager) {
-	mcp.AddTool(server, &mcp.Tool{
+func registerGetEvent(srv *server.Server, mgr *auth.Manager) {
+	server.AddTool(srv, &mcp.Tool{
 		Name:        "get_event",
 		Description: "Get full details of a specific calendar event by ID.",
 		Annotations: &mcp.ToolAnnotations{
@@ -266,11 +267,11 @@ type createEventInput struct {
 	Attendees   []string `json:"attendees,omitempty" jsonschema:"Email addresses of attendees"`
 }
 
-func registerCreateEvent(server *mcp.Server, mgr *auth.Manager) {
-	mcp.AddTool(server, &mcp.Tool{
+func registerCreateEvent(srv *server.Server, mgr *auth.Manager) {
+	server.AddTool(srv, &mcp.Tool{
 		Name: "create_event",
 		Annotations: &mcp.ToolAnnotations{
-			DestructiveHint: auth.BoolPtr(false),
+			DestructiveHint: server.BoolPtr(false),
 		},
 		Description: "Create a new event on a Google Calendar. Supports timed and all-day events, with optional attendees and location.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input createEventInput) (*mcp.CallToolResult, any, error) {
@@ -341,8 +342,8 @@ type updateEventInput struct {
 	Attendees   []string `json:"attendees,omitempty" jsonschema:"Replace attendee list with these email addresses. Omit to keep current attendees."`
 }
 
-func registerUpdateEvent(server *mcp.Server, mgr *auth.Manager) {
-	mcp.AddTool(server, &mcp.Tool{
+func registerUpdateEvent(srv *server.Server, mgr *auth.Manager) {
+	server.AddTool(srv, &mcp.Tool{
 		Name: "update_event",
 		Annotations: &mcp.ToolAnnotations{
 			IdempotentHint: true,
@@ -432,8 +433,8 @@ type deleteEventInput struct {
 	EventID    string `json:"event_id" jsonschema:"Event ID to delete"`
 }
 
-func registerDeleteEvent(server *mcp.Server, mgr *auth.Manager) {
-	mcp.AddTool(server, &mcp.Tool{
+func registerDeleteEvent(srv *server.Server, mgr *auth.Manager) {
+	server.AddTool(srv, &mcp.Tool{
 		Name:        "delete_event",
 		Annotations: &mcp.ToolAnnotations{},
 		Description: "Delete a calendar event by ID. The event is kept in trash for 30 days before permanent removal.",
@@ -469,8 +470,8 @@ type respondEventInput struct {
 	Response   string `json:"response" jsonschema:"Response status: 'accepted', 'declined', or 'tentative'"`
 }
 
-func registerRespondEvent(server *mcp.Server, mgr *auth.Manager) {
-	mcp.AddTool(server, &mcp.Tool{
+func registerRespondEvent(srv *server.Server, mgr *auth.Manager) {
+	server.AddTool(srv, &mcp.Tool{
 		Name: "respond_event",
 		Description: `Respond to a calendar event invitation. Sets your attendance status.
 
@@ -479,7 +480,7 @@ Valid responses:
   - "declined" — Decline the invitation
   - "tentative" — Tentatively accept the invitation`,
 		Annotations: &mcp.ToolAnnotations{
-			DestructiveHint: auth.BoolPtr(false),
+			DestructiveHint: server.BoolPtr(false),
 			IdempotentHint:  true,
 		},
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input respondEventInput) (*mcp.CallToolResult, any, error) {

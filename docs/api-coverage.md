@@ -9,13 +9,13 @@ Last updated: 2026-02-25
 1. **Naming:** `action_resource` pattern (e.g. `list_events`, `create_draft`, `get_profile`)
 2. **Annotations:**
    - Read-only tools: `ReadOnlyHint: true`
-   - Non-destructive mutations (create, untrash, restore): `DestructiveHint: auth.BoolPtr(false)`
+   - Non-destructive mutations (create, untrash, restore): `DestructiveHint: server.BoolPtr(false)`
    - Idempotent mutations (update, modify labels): `IdempotentHint: true`
    - Destructive mutations (delete, trash): use defaults (no explicit hint needed)
 3. **Account field descriptions:** `"Account name"` for single-account tools, `"Account name or 'all' for all accounts"` for multi-account tools
 4. **Response format:** qualified IDs (e.g. `"Message ID: %s"`), newline-separated key-value pairs, no trailing `!`
 5. **Input validation:** validate required fields before making API calls
-6. **Helper usage:** `auth.BoolPtr(bool)` for `*bool` annotation fields; `buildMessage()` in compose.go for RFC 2822 messages
+6. **Helper usage:** `server.BoolPtr(bool)` for `*bool` annotation fields; `buildMessage()` in compose.go for RFC 2822 messages
 7. **Testing:** every new tool must be added to `TestToolNames` and `TestToolAnnotations` in the corresponding `tools_test.go`
 
 ## Summary

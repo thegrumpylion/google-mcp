@@ -8,11 +8,12 @@ Supports multiple Google accounts (e.g. "personal", "work") with a single binary
 
 ## Features
 
-- **Gmail** — search, read, send, draft, label management, attachments
-- **Google Drive** — search, list, read, upload, copy, move, share, folder management
+- **Gmail** — search, read, send, draft, label management, attachments, vacation settings
+- **Google Drive** — search, list, read, upload, copy, move, share, permissions, shared drives, trash
 - **Google Calendar** — list, create, update, delete events, manage invitations
 - **Multi-account** — use `account="all"` to query across all accounts at once
 - **Per-service servers** — run only what you need
+- **Tool filtering** — `--read-only`, `--enable`, `--disable` for granular control
 
 ## Install
 
@@ -152,6 +153,23 @@ Add to `~/.claude.json` or your project's `.mcp.json`:
 }
 ```
 
+To use read-only mode or tool filtering, add flags to the `args` array:
+
+```json
+{
+  "mcpServers": {
+    "gmail": {
+      "command": "google-mcp",
+      "args": ["gmail", "--read-only"]
+    },
+    "drive": {
+      "command": "google-mcp",
+      "args": ["drive", "--disable", "delete_file,empty_trash"]
+    }
+  }
+}
+```
+
 #### OpenCode
 
 Add to `~/.config/opencode/opencode.json`:
@@ -177,45 +195,95 @@ Add to `~/.config/opencode/opencode.json`:
 
 ### Flags
 
+**Global flags** (all subcommands):
+
 ```
 --config-dir     Override config directory (default: ~/.config/google-mcp)
 --credentials    Override path to credentials.json
 ```
 
+**Server flags** (gmail, drive, calendar):
+
+```
+--read-only      Only expose read-only tools (no mutations)
+--enable         Whitelist of tool names to expose (comma-separated)
+--disable        Blacklist of tool names to hide (comma-separated)
+```
+
+`--enable` and `--disable` are mutually exclusive. When `--read-only` is set, `--enable`/`--disable` operate on the read-only subset only.
+
+**Examples:**
+
+```sh
+# Read-only Gmail server (no send, modify, delete, etc.)
+google-mcp gmail --read-only
+
+# Only expose search and read tools
+google-mcp gmail --enable search_messages,read_message,read_thread,list_labels
+
+# Everything except delete
+google-mcp drive --disable delete_file,empty_trash
+
+# Read-only drive, but exclude shared drive tools
+google-mcp drive --read-only --disable list_shared_drives,get_shared_drive
+```
+
 ## Available Tools
 
-### Gmail (11 tools)
+### Gmail (25 tools)
 
 | Tool | Description |
 |------|-------------|
 | `list_accounts` | List configured accounts |
-| `search` | Search messages using Gmail query syntax |
-| `read` | Read full message content by ID |
+| `get_profile` | Get email address, message/thread counts |
+| `search_messages` | Search messages using Gmail query syntax |
+| `read_message` | Read full message content by ID |
+| `list_threads` | List threads (thread-based browsing) |
 | `read_thread` | Read all messages in a thread |
-| `send` | Send an email |
+| `modify_thread` | Add/remove labels on an entire thread |
+| `trash_thread` | Move a thread to trash |
+| `untrash_thread` | Restore a thread from trash |
+| `send_message` | Send an email (with reply/CC/BCC support) |
 | `list_labels` | List all labels |
-| `modify` | Add/remove labels (archive, trash, star, read/unread) |
+| `get_label` | Get label details (unread/total counts) |
+| `create_label` | Create a custom label |
+| `delete_label` | Delete a custom label |
+| `modify_messages` | Batch add/remove labels on messages |
+| `delete_message` | Permanently delete a message |
 | `get_attachment` | Download an attachment |
-| `draft_create` | Create a draft |
-| `draft_list` | List drafts |
-| `draft_send` | Send an existing draft |
+| `get_vacation` | Get vacation/auto-reply settings |
+| `update_vacation` | Update vacation/auto-reply settings |
+| `create_draft` | Create a draft |
+| `list_drafts` | List drafts |
+| `get_draft` | Get a draft by ID |
+| `update_draft` | Update a draft |
+| `delete_draft` | Delete a draft |
+| `send_draft` | Send an existing draft |
 
-### Google Drive (12 tools)
+### Google Drive (20 tools)
 
 | Tool | Description |
 |------|-------------|
 | `list_accounts` | List configured accounts |
-| `search` | Search files using Drive query syntax |
-| `list` | List files, optionally in a folder |
-| `get` | Get file metadata |
-| `read` | Read/download file content |
-| `upload` | Upload a new file |
-| `update` | Update file metadata (rename, description) |
-| `delete` | Delete a file (trash or permanent) |
+| `search_files` | Search files using Drive query syntax |
+| `list_files` | List files, optionally in a folder |
+| `get_file` | Get file metadata |
+| `read_file` | Read/download file content |
+| `upload_file` | Upload a new file |
+| `update_file` | Update file metadata (rename, description) |
+| `delete_file` | Delete a file (trash or permanent) |
 | `create_folder` | Create a folder |
-| `move` | Move a file to a different folder |
-| `copy` | Copy a file |
-| `share` | Share a file (user, group, domain, anyone) |
+| `move_file` | Move a file to a different folder |
+| `copy_file` | Copy a file |
+| `share_file` | Share a file (user, group, domain, anyone) |
+| `list_permissions` | List who has access to a file |
+| `get_permission` | Inspect a specific permission |
+| `update_permission` | Change access level for a permission |
+| `delete_permission` | Revoke access (unshare) |
+| `empty_trash` | Permanently delete all trashed files |
+| `get_about` | Get storage quota, user info, export formats |
+| `list_shared_drives` | List shared drives |
+| `get_shared_drive` | Get shared drive details |
 
 ### Google Calendar (8 tools)
 

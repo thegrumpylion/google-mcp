@@ -8,6 +8,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/thegrumpylion/google-mcp/internal/auth"
+	"github.com/thegrumpylion/google-mcp/internal/server"
 	gmailapi "google.golang.org/api/gmail/v1"
 )
 
@@ -53,8 +54,8 @@ type getAttachmentInput struct {
 	AttachmentID string `json:"attachment_id" jsonschema:"Attachment ID (from read or read_thread results)"`
 }
 
-func registerGetAttachment(server *mcp.Server, mgr *auth.Manager) {
-	mcp.AddTool(server, &mcp.Tool{
+func registerGetAttachment(srv *server.Server, mgr *auth.Manager) {
+	server.AddTool(srv, &mcp.Tool{
 		Name:        "get_attachment",
 		Description: "Download a Gmail message attachment by ID. Returns the attachment data as base64. Use read to discover attachment IDs.",
 		Annotations: &mcp.ToolAnnotations{

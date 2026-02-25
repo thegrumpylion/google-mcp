@@ -6,6 +6,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/thegrumpylion/google-mcp/internal/auth"
+	"github.com/thegrumpylion/google-mcp/internal/server"
 	gmailapi "google.golang.org/api/gmail/v1"
 )
 
@@ -26,8 +27,8 @@ type modifyInput struct {
 //   Star:        add STARRED
 //   Unstar:      remove STARRED
 
-func registerModify(server *mcp.Server, mgr *auth.Manager) {
-	mcp.AddTool(server, &mcp.Tool{
+func registerModify(srv *server.Server, mgr *auth.Manager) {
+	server.AddTool(srv, &mcp.Tool{
 		Name: "modify_messages",
 		Annotations: &mcp.ToolAnnotations{
 			IdempotentHint: true,
@@ -83,8 +84,8 @@ type deleteMessageInput struct {
 	MessageID string `json:"message_id" jsonschema:"Gmail message ID to permanently delete"`
 }
 
-func registerDeleteMessage(server *mcp.Server, mgr *auth.Manager) {
-	mcp.AddTool(server, &mcp.Tool{
+func registerDeleteMessage(srv *server.Server, mgr *auth.Manager) {
+	server.AddTool(srv, &mcp.Tool{
 		Name:        "delete_message",
 		Description: "Permanently delete a Gmail message. This action bypasses the trash and is irreversible. The message cannot be recovered.",
 		Annotations: &mcp.ToolAnnotations{},

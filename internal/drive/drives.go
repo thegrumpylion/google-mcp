@@ -7,6 +7,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/thegrumpylion/google-mcp/internal/auth"
+	"github.com/thegrumpylion/google-mcp/internal/server"
 )
 
 // --- list_shared_drives ---
@@ -17,8 +18,8 @@ type listSharedDrivesInput struct {
 	MaxResults int64  `json:"max_results,omitempty" jsonschema:"Maximum number of results (default 20, max 100)"`
 }
 
-func registerListSharedDrives(server *mcp.Server, mgr *auth.Manager) {
-	mcp.AddTool(server, &mcp.Tool{
+func registerListSharedDrives(srv *server.Server, mgr *auth.Manager) {
+	server.AddTool(srv, &mcp.Tool{
 		Name:        "list_shared_drives",
 		Description: "List shared drives the user has access to. Optionally filter by name using a search query.",
 		Annotations: &mcp.ToolAnnotations{
@@ -87,8 +88,8 @@ type getSharedDriveInput struct {
 	DriveID string `json:"drive_id" jsonschema:"Shared drive ID"`
 }
 
-func registerGetSharedDrive(server *mcp.Server, mgr *auth.Manager) {
-	mcp.AddTool(server, &mcp.Tool{
+func registerGetSharedDrive(srv *server.Server, mgr *auth.Manager) {
+	server.AddTool(srv, &mcp.Tool{
 		Name:        "get_shared_drive",
 		Description: "Get details of a specific shared drive including name, creation time, and restrictions.",
 		Annotations: &mcp.ToolAnnotations{

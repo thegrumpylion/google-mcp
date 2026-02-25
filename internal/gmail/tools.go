@@ -9,6 +9,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/thegrumpylion/google-mcp/internal/auth"
+	"github.com/thegrumpylion/google-mcp/internal/server"
 	"google.golang.org/api/gmail/v1"
 )
 
@@ -21,32 +22,32 @@ var Scopes = []string{
 }
 
 // RegisterTools registers all Gmail MCP tools on the given server.
-func RegisterTools(server *mcp.Server, mgr *auth.Manager) {
-	auth.RegisterAccountsListTool(server, mgr)
-	registerGetProfile(server, mgr)
-	registerSearch(server, mgr)
-	registerRead(server, mgr)
-	registerListThreads(server, mgr)
-	registerReadThread(server, mgr)
-	registerThreadModify(server, mgr)
-	registerTrashThread(server, mgr)
-	registerUntrashThread(server, mgr)
-	registerSend(server, mgr)
-	registerListLabels(server, mgr)
-	registerGetLabel(server, mgr)
-	registerCreateLabel(server, mgr)
-	registerDeleteLabel(server, mgr)
-	registerModify(server, mgr)
-	registerDeleteMessage(server, mgr)
-	registerGetAttachment(server, mgr)
-	registerGetVacation(server, mgr)
-	registerUpdateVacation(server, mgr)
-	registerDraftCreate(server, mgr)
-	registerDraftList(server, mgr)
-	registerDraftGet(server, mgr)
-	registerDraftUpdate(server, mgr)
-	registerDraftDelete(server, mgr)
-	registerDraftSend(server, mgr)
+func RegisterTools(srv *server.Server, mgr *auth.Manager) {
+	server.RegisterAccountsListTool(srv, mgr)
+	registerGetProfile(srv, mgr)
+	registerSearch(srv, mgr)
+	registerRead(srv, mgr)
+	registerListThreads(srv, mgr)
+	registerReadThread(srv, mgr)
+	registerThreadModify(srv, mgr)
+	registerTrashThread(srv, mgr)
+	registerUntrashThread(srv, mgr)
+	registerSend(srv, mgr)
+	registerListLabels(srv, mgr)
+	registerGetLabel(srv, mgr)
+	registerCreateLabel(srv, mgr)
+	registerDeleteLabel(srv, mgr)
+	registerModify(srv, mgr)
+	registerDeleteMessage(srv, mgr)
+	registerGetAttachment(srv, mgr)
+	registerGetVacation(srv, mgr)
+	registerUpdateVacation(srv, mgr)
+	registerDraftCreate(srv, mgr)
+	registerDraftList(srv, mgr)
+	registerDraftGet(srv, mgr)
+	registerDraftUpdate(srv, mgr)
+	registerDraftDelete(srv, mgr)
+	registerDraftSend(srv, mgr)
 }
 
 func newService(ctx context.Context, mgr *auth.Manager, account string) (*gmail.Service, error) {
@@ -65,8 +66,8 @@ type searchInput struct {
 	MaxResults int64  `json:"max_results,omitempty" jsonschema:"Maximum number of results per account (default 10, max 500)"`
 }
 
-func registerSearch(server *mcp.Server, mgr *auth.Manager) {
-	mcp.AddTool(server, &mcp.Tool{
+func registerSearch(srv *server.Server, mgr *auth.Manager) {
+	server.AddTool(srv, &mcp.Tool{
 		Name:        "search_messages",
 		Description: "Search Gmail messages using Gmail query syntax. Set account to 'all' to search across all accounts. Returns message IDs and snippets. Use read to get full message content.",
 		Annotations: &mcp.ToolAnnotations{
@@ -151,8 +152,8 @@ type readInput struct {
 	MessageID string `json:"message_id" jsonschema:"Gmail message ID (from search results)"`
 }
 
-func registerRead(server *mcp.Server, mgr *auth.Manager) {
-	mcp.AddTool(server, &mcp.Tool{
+func registerRead(srv *server.Server, mgr *auth.Manager) {
+	server.AddTool(srv, &mcp.Tool{
 		Name:        "read_message",
 		Description: "Read the full content of a Gmail message by ID. Returns headers, body text, and attachment list. Use get_attachment to download attachments.",
 		Annotations: &mcp.ToolAnnotations{
@@ -265,12 +266,12 @@ type sendInput struct {
 	ReplyToMessageID string `json:"reply_to_message_id,omitempty" jsonschema:"Message ID to reply to (sets In-Reply-To and References headers, keeps thread)"`
 }
 
-func registerSend(server *mcp.Server, mgr *auth.Manager) {
-	mcp.AddTool(server, &mcp.Tool{
+func registerSend(srv *server.Server, mgr *auth.Manager) {
+	server.AddTool(srv, &mcp.Tool{
 		Name:        "send_message",
 		Description: "Send an email via Gmail. Supports To, CC, BCC, and replying to existing messages.",
 		Annotations: &mcp.ToolAnnotations{
-			DestructiveHint: auth.BoolPtr(false),
+			DestructiveHint: server.BoolPtr(false),
 		},
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input sendInput) (*mcp.CallToolResult, any, error) {
 		svc, err := newService(ctx, mgr, input.Account)
@@ -318,8 +319,8 @@ type listLabelsInput struct {
 	Account string `json:"account" jsonschema:"Account name or 'all' for all accounts"`
 }
 
-func registerListLabels(server *mcp.Server, mgr *auth.Manager) {
-	mcp.AddTool(server, &mcp.Tool{
+func registerListLabels(srv *server.Server, mgr *auth.Manager) {
+	server.AddTool(srv, &mcp.Tool{
 		Name:        "list_labels",
 		Description: "List all Gmail labels for an account. Set account to 'all' to list labels from all accounts. Useful for filtering searches.",
 		Annotations: &mcp.ToolAnnotations{

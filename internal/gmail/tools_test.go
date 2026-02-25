@@ -10,12 +10,13 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/thegrumpylion/google-mcp/internal/auth"
+	"github.com/thegrumpylion/google-mcp/internal/server"
 	gmailapi "google.golang.org/api/gmail/v1"
 )
 
 // connect creates an in-memory client session connected to the given server.
 // This follows the pattern from the MCP Go SDK's own tests.
-func connect(t *testing.T, server *mcp.Server) *mcp.ClientSession {
+func connect(t *testing.T, server *server.Server) *mcp.ClientSession {
 	t.Helper()
 	ctx := context.Background()
 	serverTransport, clientTransport := mcp.NewInMemoryTransports()
@@ -49,15 +50,15 @@ func newTestManager(t *testing.T) *auth.Manager {
 	return mgr
 }
 
-func newTestServer(t *testing.T) *mcp.Server {
+func newTestServer(t *testing.T) *server.Server {
 	t.Helper()
 	mgr := newTestManager(t)
-	server := mcp.NewServer(&mcp.Implementation{Name: "test-gmail", Version: "test"}, nil)
+	server := server.NewServer(&mcp.Implementation{Name: "test-gmail", Version: "test"}, nil)
 	RegisterTools(server, mgr)
 	return server
 }
 
-func listTools(t *testing.T, server *mcp.Server) []*mcp.Tool {
+func listTools(t *testing.T, server *server.Server) []*mcp.Tool {
 	t.Helper()
 	ctx := context.Background()
 	session := connect(t, server)
@@ -68,7 +69,7 @@ func listTools(t *testing.T, server *mcp.Server) []*mcp.Tool {
 	return res.Tools
 }
 
-func listToolNames(t *testing.T, server *mcp.Server) []string {
+func listToolNames(t *testing.T, server *server.Server) []string {
 	t.Helper()
 	tools := listTools(t, server)
 	names := make([]string, 0, len(tools))
@@ -81,7 +82,7 @@ func listToolNames(t *testing.T, server *mcp.Server) []string {
 
 func TestRegisterTools(t *testing.T) {
 	mgr := newTestManager(t)
-	server := mcp.NewServer(&mcp.Implementation{Name: "test-gmail", Version: "test"}, nil)
+	server := server.NewServer(&mcp.Implementation{Name: "test-gmail", Version: "test"}, nil)
 
 	// This should not panic — the exact bug we fixed with jsonschema tags.
 	RegisterTools(server, mgr)
