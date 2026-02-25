@@ -42,6 +42,15 @@ func RegisterTools(srv *server.Server, mgr *auth.Manager) {
 	// drives.go
 	registerListSharedDrives(srv, mgr)
 	registerGetSharedDrive(srv, mgr)
+	registerCreateSharedDrive(srv, mgr)
+	registerUpdateSharedDrive(srv, mgr)
+	registerDeleteSharedDrive(srv, mgr)
+	// revisions.go
+	registerListRevisions(srv, mgr)
+	registerGetRevision(srv, mgr)
+	registerDeleteRevision(srv, mgr)
+	// changes.go
+	registerListChanges(srv, mgr)
 }
 
 func newService(ctx context.Context, mgr *auth.Manager, account string) (*drive.Service, error) {

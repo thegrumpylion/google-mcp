@@ -23,9 +23,9 @@ Last updated: 2026-02-25
 | Server   | Tools | SDK Methods Covered | Total SDK Methods | Coverage |
 |----------|-------|--------------------:|------------------:|---------:|
 | Gmail    |    36 |                  34 |                80 |      43% |
-| Drive    |    20 |                  21 |                58 |      36% |
+| Drive    |    27 |                  28 |                58 |      48% |
 | Calendar |    16 |                  16 |                38 |      42% |
-| **Total**| **72**|              **71** |           **176** |  **~40%**|
+| **Total**| **79**|              **78** |           **176** |  **~44%**|
 
 Additionally, 2 **local file tools** (`list_local_files`, `read_local_file`) are conditionally registered on all servers when `--allow-read-dir` or `--allow-write-dir` is set. These are not counted above as they don't map to Google API methods.
 
@@ -137,6 +137,13 @@ Additionally, 2 **local file tools** (`list_local_files`, `read_local_file`) are
 | `get_about` | `About.Get` | Read |
 | `list_shared_drives` | `Drives.List` | Read |
 | `get_shared_drive` | `Drives.Get` | Read |
+| `create_shared_drive` | `Drives.Create` | Mutation |
+| `update_shared_drive` | `Drives.Update` | Mutation |
+| `delete_shared_drive` | `Drives.Delete` | Mutation |
+| `list_revisions` | `Revisions.List` | Read |
+| `get_revision` | `Revisions.Get` | Read |
+| `delete_revision` | `Revisions.Delete` | Mutation |
+| `list_changes` | `Changes.List` + `Changes.GetStartPageToken` | Read |
 
 ### Gaps
 
@@ -159,13 +166,13 @@ Additionally, 2 **local file tools** (`list_local_files`, `read_local_file`) are
 - [ ] **Update comment** -- `Comments.Update` (mutation) -- edit a comment
 - [ ] **List replies** -- `Replies.List` (read) -- view replies to a comment
 - [ ] **Create reply** -- `Replies.Create` (mutation) -- reply to a comment
-- [ ] **List revisions** -- `Revisions.List` (read) -- view file version history
-- [ ] **Get revision** -- `Revisions.Get` (read) -- inspect a specific version
-- [ ] **Delete revision** -- `Revisions.Delete` (mutation) -- remove a version
-- [ ] **List changes** -- `Changes.List` (read) -- track what changed across Drive
-- [ ] **Create shared drive** -- `Drives.Create` (mutation) -- create collaboration spaces
-- [ ] **Update shared drive** -- `Drives.Update` (mutation) -- manage shared drive settings
-- [ ] **Delete shared drive** -- `Drives.Delete` (mutation) -- remove a shared drive
+- [x] **List revisions** -- `Revisions.List` (read) -- view file version history
+- [x] **Get revision** -- `Revisions.Get` (read) -- inspect a specific version
+- [x] **Delete revision** -- `Revisions.Delete` (mutation) -- remove a version
+- [x] **List changes** -- `Changes.List` (read) -- track what changed across Drive
+- [x] **Create shared drive** -- `Drives.Create` (mutation) -- create collaboration spaces
+- [x] **Update shared drive** -- `Drives.Update` (mutation) -- manage shared drive settings
+- [x] **Delete shared drive** -- `Drives.Delete` (mutation) -- remove a shared drive
 
 #### Low Value
 

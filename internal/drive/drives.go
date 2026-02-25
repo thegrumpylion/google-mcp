@@ -5,15 +5,12 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/thegrumpylion/google-mcp/internal/auth"
 	"github.com/thegrumpylion/google-mcp/internal/server"
+	driveapi "google.golang.org/api/drive/v3"
 )
-
-// TODO: Planned shared drive tools (from api-coverage.md):
-// - create_shared_drive (Drives.Create)
-// - update_shared_drive (Drives.Update)
-// - delete_shared_drive (Drives.Delete)
 
 // --- list_shared_drives ---
 
@@ -150,6 +147,125 @@ func registerGetSharedDrive(srv *server.Server, mgr *auth.Manager) {
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{
 				&mcp.TextContent{Text: sb.String()},
+			},
+		}, nil, nil
+	})
+}
+
+// --- create_shared_drive ---
+
+type createSharedDriveInput struct {
+	Account string `json:"account" jsonschema:"Account name"`
+	Name    string `json:"name" jsonschema:"Name for the new shared drive"`
+}
+
+func registerCreateSharedDrive(srv *server.Server, mgr *auth.Manager) {
+	server.AddTool(srv, &mcp.Tool{
+		Name:        "create_shared_drive",
+		Description: "Create a new shared drive for team collaboration.",
+		Annotations: &mcp.ToolAnnotations{
+			DestructiveHint: server.BoolPtr(false),
+		},
+	}, func(ctx context.Context, req *mcp.CallToolRequest, input createSharedDriveInput) (*mcp.CallToolResult, any, error) {
+		if input.Name == "" {
+			return nil, nil, fmt.Errorf("name is required")
+		}
+
+		svc, err := newService(ctx, mgr, input.Account)
+		if err != nil {
+			return nil, nil, fmt.Errorf("creating Drive service: %w", err)
+		}
+
+		// The API requires a unique requestId for idempotency.
+		requestID := uuid.New().String()
+
+		d, err := svc.Drives.Create(requestID, &driveapi.Drive{
+			Name: input.Name,
+		}).Do()
+		if err != nil {
+			return nil, nil, fmt.Errorf("creating shared drive: %w", err)
+		}
+
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{
+				&mcp.TextContent{Text: fmt.Sprintf("Shared drive created.\n\nDrive ID: %s\nName: %s", d.Id, d.Name)},
+			},
+		}, nil, nil
+	})
+}
+
+// --- update_shared_drive ---
+
+type updateSharedDriveInput struct {
+	Account string `json:"account" jsonschema:"Account name"`
+	DriveID string `json:"drive_id" jsonschema:"Shared drive ID to update"`
+	Name    string `json:"name,omitempty" jsonschema:"New name for the shared drive (leave empty to keep current)"`
+}
+
+func registerUpdateSharedDrive(srv *server.Server, mgr *auth.Manager) {
+	server.AddTool(srv, &mcp.Tool{
+		Name:        "update_shared_drive",
+		Description: "Update a shared drive's name or settings.",
+		Annotations: &mcp.ToolAnnotations{
+			IdempotentHint: true,
+		},
+	}, func(ctx context.Context, req *mcp.CallToolRequest, input updateSharedDriveInput) (*mcp.CallToolResult, any, error) {
+		if input.DriveID == "" {
+			return nil, nil, fmt.Errorf("drive_id is required")
+		}
+
+		svc, err := newService(ctx, mgr, input.Account)
+		if err != nil {
+			return nil, nil, fmt.Errorf("creating Drive service: %w", err)
+		}
+
+		update := &driveapi.Drive{}
+		if input.Name != "" {
+			update.Name = input.Name
+		}
+
+		d, err := svc.Drives.Update(input.DriveID, update).Do()
+		if err != nil {
+			return nil, nil, fmt.Errorf("updating shared drive: %w", err)
+		}
+
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{
+				&mcp.TextContent{Text: fmt.Sprintf("Shared drive updated.\n\nDrive ID: %s\nName: %s", d.Id, d.Name)},
+			},
+		}, nil, nil
+	})
+}
+
+// --- delete_shared_drive ---
+
+type deleteSharedDriveInput struct {
+	Account string `json:"account" jsonschema:"Account name"`
+	DriveID string `json:"drive_id" jsonschema:"Shared drive ID to delete"`
+}
+
+func registerDeleteSharedDrive(srv *server.Server, mgr *auth.Manager) {
+	server.AddTool(srv, &mcp.Tool{
+		Name:        "delete_shared_drive",
+		Description: "Delete a shared drive. The shared drive must be empty (no files or folders) before it can be deleted. This action is permanent.",
+		Annotations: &mcp.ToolAnnotations{},
+	}, func(ctx context.Context, req *mcp.CallToolRequest, input deleteSharedDriveInput) (*mcp.CallToolResult, any, error) {
+		if input.DriveID == "" {
+			return nil, nil, fmt.Errorf("drive_id is required")
+		}
+
+		svc, err := newService(ctx, mgr, input.Account)
+		if err != nil {
+			return nil, nil, fmt.Errorf("creating Drive service: %w", err)
+		}
+
+		if err := svc.Drives.Delete(input.DriveID).Do(); err != nil {
+			return nil, nil, fmt.Errorf("deleting shared drive: %w", err)
+		}
+
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{
+				&mcp.TextContent{Text: fmt.Sprintf("Shared drive %s deleted.", input.DriveID)},
 			},
 		}, nil, nil
 	})

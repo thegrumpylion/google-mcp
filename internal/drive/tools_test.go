@@ -259,16 +259,22 @@ func TestToolNames(t *testing.T) {
 	want := []string{
 		"copy_file",
 		"create_folder",
+		"create_shared_drive",
 		"delete_file",
 		"delete_permission",
+		"delete_revision",
+		"delete_shared_drive",
 		"empty_trash",
 		"get_about",
 		"get_file",
 		"get_permission",
+		"get_revision",
 		"get_shared_drive",
 		"list_accounts",
+		"list_changes",
 		"list_files",
 		"list_permissions",
+		"list_revisions",
 		"list_shared_drives",
 		"move_file",
 		"read_file",
@@ -276,6 +282,7 @@ func TestToolNames(t *testing.T) {
 		"share_file",
 		"update_file",
 		"update_permission",
+		"update_shared_drive",
 		"upload_file",
 	}
 
@@ -302,6 +309,7 @@ func TestToolAnnotations(t *testing.T) {
 	readOnly := []string{
 		"list_accounts", "search_files", "list_files", "get_file", "read_file",
 		"list_permissions", "get_permission", "get_about", "list_shared_drives", "get_shared_drive",
+		"list_revisions", "get_revision", "list_changes",
 	}
 	for _, name := range readOnly {
 		tool := toolMap[name]
@@ -318,6 +326,7 @@ func TestToolAnnotations(t *testing.T) {
 		"upload_file", "update_file", "delete_file",
 		"create_folder", "move_file", "copy_file", "share_file",
 		"update_permission", "delete_permission", "empty_trash",
+		"delete_revision", "create_shared_drive", "update_shared_drive", "delete_shared_drive",
 	}
 	for _, name := range mutations {
 		tool := toolMap[name]
@@ -355,9 +364,9 @@ func TestToolNames_WithLocalFS(t *testing.T) {
 	}
 	sort.Strings(got)
 
-	// Should include all 20 base tools + 2 localfs tools = 22.
-	if len(got) != 22 {
-		t.Fatalf("got %d tools, want 22\ngot: %v", len(got), got)
+	// Should include all 27 base tools + 2 localfs tools = 29.
+	if len(got) != 29 {
+		t.Fatalf("got %d tools, want 29\ngot: %v", len(got), got)
 	}
 
 	names := make(map[string]bool)

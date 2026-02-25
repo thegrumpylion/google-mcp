@@ -9,7 +9,7 @@ Supports multiple Google accounts (e.g. "personal", "work") with a single binary
 ## Features
 
 - **Gmail** — search, read, send (with attachments), drafts, labels, filters, trash/untrash, history, send-as aliases, vacation settings, cross-service Drive integration
-- **Google Drive** — search, list, read, upload, copy, move, share, permissions, shared drives, trash
+- **Google Drive** — search, list, read, upload, copy, move, share, permissions, shared drives, revisions, change tracking, trash
 - **Google Calendar** — list, create, update, delete events, manage invitations, free/busy queries, calendar CRUD, sharing (ACL)
 - **Multi-account** — use `account="all"` to query across all accounts at once
 - **Per-service servers** — run only what you need
@@ -396,7 +396,7 @@ save_attachment_to_drive(
 | `send_draft` | Send an existing draft |
 | `save_attachment_to_drive` | Save a Gmail attachment directly to Google Drive (server-side) |
 
-### Google Drive (20 tools)
+### Google Drive (27 tools)
 
 | Tool | Description |
 |------|-------------|
@@ -420,6 +420,13 @@ save_attachment_to_drive(
 | `get_about` | Get storage quota, user info, export formats |
 | `list_shared_drives` | List shared drives |
 | `get_shared_drive` | Get shared drive details |
+| `create_shared_drive` | Create a new shared drive |
+| `update_shared_drive` | Update a shared drive's name or settings |
+| `delete_shared_drive` | Delete an empty shared drive |
+| `list_revisions` | List file version history |
+| `get_revision` | Get details of a specific file revision |
+| `delete_revision` | Delete a specific file revision |
+| `list_changes` | Track changes across Drive since a point in time |
 
 ### Google Calendar (16 tools)
 
