@@ -13,8 +13,10 @@ import (
 )
 
 // Scopes required by the Gmail tools.
+// GmailModifyScope is a superset of GmailReadonlyScope and covers
+// label changes, drafts, and message modifications.
 var Scopes = []string{
-	gmail.GmailReadonlyScope,
+	gmail.GmailModifyScope,
 	gmail.GmailSendScope,
 }
 
@@ -23,8 +25,14 @@ func RegisterTools(server *mcp.Server, mgr *auth.Manager) {
 	registerAccountsList(server, mgr)
 	registerSearch(server, mgr)
 	registerRead(server, mgr)
+	registerReadThread(server, mgr)
 	registerSend(server, mgr)
 	registerListLabels(server, mgr)
+	registerModify(server, mgr)
+	registerGetAttachment(server, mgr)
+	registerDraftCreate(server, mgr)
+	registerDraftList(server, mgr)
+	registerDraftSend(server, mgr)
 }
 
 func newService(ctx context.Context, mgr *auth.Manager, account string) (*gmail.Service, error) {
@@ -167,7 +175,7 @@ type readInput struct {
 func registerRead(server *mcp.Server, mgr *auth.Manager) {
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "gmail_read",
-		Description: "Read the full content of a Gmail message by ID. Returns headers and body text.",
+		Description: "Read the full content of a Gmail message by ID. Returns headers, body text, and attachment list. Use gmail_get_attachment to download attachments.",
 		Annotations: &mcp.ToolAnnotations{
 			ReadOnlyHint: true,
 		},
@@ -185,6 +193,7 @@ func registerRead(server *mcp.Server, mgr *auth.Manager) {
 		var sb strings.Builder
 
 		// Write headers.
+		fmt.Fprintf(&sb, "Thread ID: %s\n", msg.ThreadId)
 		if msg.Payload != nil {
 			for _, h := range msg.Payload.Headers {
 				switch h.Name {
@@ -201,6 +210,17 @@ func registerRead(server *mcp.Server, mgr *auth.Manager) {
 			sb.WriteString(body)
 		} else {
 			sb.WriteString("(no text content)")
+		}
+
+		// List attachments.
+		attachments := listAttachments(msg.Payload)
+		if len(attachments) > 0 {
+			sb.WriteString("\n\nAttachments:\n")
+			for _, a := range attachments {
+				fmt.Fprintf(&sb, "  - %s (MIME: %s, Size: %d bytes, Attachment ID: %s)\n",
+					a.filename, a.mimeType, a.size, a.attachmentID)
+			}
+			sb.WriteString("\nUse gmail_get_attachment with the message ID and attachment ID to download.")
 		}
 
 		return &mcp.CallToolResult{

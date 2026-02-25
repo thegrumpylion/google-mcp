@@ -168,7 +168,10 @@ func newGmailCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "gmail",
 		Short: "Start the Gmail MCP server (stdio)",
-		Long:  "Starts an MCP server over stdio with Gmail tools: gmail_search, gmail_read, gmail_send, gmail_list_labels, accounts_list.",
+		Long: `Starts an MCP server over stdio with Gmail tools:
+  accounts_list, gmail_search, gmail_read, gmail_read_thread, gmail_send,
+  gmail_list_labels, gmail_modify, gmail_get_attachment,
+  gmail_draft_create, gmail_draft_list, gmail_draft_send.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			mgr, err := newManager()
 			if err != nil {
