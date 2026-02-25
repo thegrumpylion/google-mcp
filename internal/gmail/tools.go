@@ -17,11 +17,14 @@ import (
 // MailGoogleComScope grants full access to the mailbox including permanent
 // deletion, settings, send, and all read/write operations. It is a superset
 // of GmailModifyScope, GmailSendScope, and GmailSettingsBasicScope.
+// GmailSettingsBasicScope is added explicitly because the Filters API
+// requires it even when MailGoogleComScope is present.
 // DriveScope is included for bridge tools (save_attachment_to_drive,
 // get_drive_file_content) that transfer data between Gmail and Drive
 // server-side.
 var Scopes = []string{
 	gmail.MailGoogleComScope,
+	gmail.GmailSettingsBasicScope,
 	drive.DriveScope,
 }
 

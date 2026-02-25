@@ -75,8 +75,9 @@ Enable the APIs for the services you want to use:
 
 | Service  | Scope | Description |
 |----------|-------|-------------|
-| Gmail    | `https://www.googleapis.com/auth/gmail.modify` | Read, compose, send, and manage labels |
-| Gmail    | `https://www.googleapis.com/auth/gmail.send` | Send email on your behalf |
+| Gmail    | `https://mail.google.com/` | Full mailbox access (read, send, delete, settings) |
+| Gmail    | `https://www.googleapis.com/auth/gmail.settings.basic` | Manage filters and other basic settings |
+| Gmail    | `https://www.googleapis.com/auth/drive` | Attach Drive files and save attachments to Drive |
 | Drive    | `https://www.googleapis.com/auth/drive` | Full access to Google Drive |
 | Calendar | `https://www.googleapis.com/auth/calendar` | Full access to Google Calendar (events, calendars, sharing) |
 
