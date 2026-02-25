@@ -65,6 +65,49 @@ func AddTool[In, Out any](s *Server, t *mcp.Tool, h mcp.ToolHandlerFor[In, Out])
 	mcp.AddTool(s.Server, t, h)
 }
 
+// WriteDirsDescription returns a description snippet listing the configured
+// write-enabled directories, suitable for appending to a tool description.
+// Returns an empty string if no local filesystem is configured or there are
+// no write directories.
+func (s *Server) WriteDirsDescription() string {
+	if s.localFS == nil {
+		return ""
+	}
+	var sb strings.Builder
+	for _, d := range s.localFS.Dirs() {
+		if d.Mode == localfs.ModeReadWrite {
+			fmt.Fprintf(&sb, "  - %s\n", d.Path)
+		}
+	}
+	if sb.Len() == 0 {
+		return ""
+	}
+	return "\n\nAllowed write directories (for save_to paths):\n" + sb.String()
+}
+
+// ReadDirsDescription returns a description snippet listing all configured
+// directories (both read-only and read-write), suitable for appending to a
+// tool description. Returns an empty string if no local filesystem is configured.
+func (s *Server) ReadDirsDescription() string {
+	if s.localFS == nil {
+		return ""
+	}
+	dirs := s.localFS.Dirs()
+	if len(dirs) == 0 {
+		return ""
+	}
+	var sb strings.Builder
+	sb.WriteString("\n\nAllowed local directories (for local file paths):\n")
+	for _, d := range dirs {
+		mode := "read-only"
+		if d.Mode == localfs.ModeReadWrite {
+			mode = "read-write"
+		}
+		fmt.Fprintf(&sb, "  - %s (%s)\n", d.Path, mode)
+	}
+	return sb.String()
+}
+
 // ToolFilter configures which tools are exposed by an MCP server.
 type ToolFilter struct {
 	// ReadOnly limits the server to read-only tools.

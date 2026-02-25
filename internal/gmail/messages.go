@@ -173,14 +173,16 @@ type sendInput struct {
 }
 
 func registerSend(srv *server.Server, mgr *auth.Manager) {
-	server.AddTool(srv, &mcp.Tool{
-		Name: "send_message",
-		Description: `Send an email via Gmail. Supports To, CC, BCC, and replying to existing messages.
+	desc := `Send an email via Gmail. Supports To, CC, BCC, and replying to existing messages.
 
 Attachments can be provided:
 - Inline (base64-encoded content in the attachments field)
 - From Google Drive (by file ID — content is fetched server-side)
-- From local files (requires --allow-read-dir to be configured)`,
+- From local files (requires --allow-read-dir to be configured)` + srv.ReadDirsDescription()
+
+	server.AddTool(srv, &mcp.Tool{
+		Name:        "send_message",
+		Description: desc,
 		Annotations: &mcp.ToolAnnotations{
 			DestructiveHint: server.BoolPtr(false),
 		},

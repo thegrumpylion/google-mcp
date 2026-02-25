@@ -20,12 +20,14 @@ type draftCreateInput struct {
 }
 
 func registerDraftCreate(srv *server.Server, mgr *auth.Manager) {
+	desc := "Create a Gmail draft. The draft is saved but not sent. Use send_draft to send it later, or list_drafts to see all drafts." + srv.ReadDirsDescription()
+
 	server.AddTool(srv, &mcp.Tool{
 		Name: "create_draft",
 		Annotations: &mcp.ToolAnnotations{
 			DestructiveHint: server.BoolPtr(false),
 		},
-		Description: "Create a Gmail draft. The draft is saved but not sent. Use send_draft to send it later, or list_drafts to see all drafts.",
+		Description: desc,
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input draftCreateInput) (*mcp.CallToolResult, any, error) {
 		if len(input.LocalAttachments) > 0 {
 			lfs := srv.LocalFS()
@@ -235,12 +237,14 @@ type draftUpdateInput struct {
 }
 
 func registerDraftUpdate(srv *server.Server, mgr *auth.Manager) {
+	desc := "Update an existing Gmail draft with new content. Replaces the draft message entirely." + srv.ReadDirsDescription()
+
 	server.AddTool(srv, &mcp.Tool{
 		Name: "update_draft",
 		Annotations: &mcp.ToolAnnotations{
 			IdempotentHint: true,
 		},
-		Description: "Update an existing Gmail draft with new content. Replaces the draft message entirely.",
+		Description: desc,
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input draftUpdateInput) (*mcp.CallToolResult, any, error) {
 		if len(input.LocalAttachments) > 0 {
 			lfs := srv.LocalFS()

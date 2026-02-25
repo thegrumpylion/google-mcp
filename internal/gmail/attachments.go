@@ -56,13 +56,15 @@ type getAttachmentInput struct {
 }
 
 func registerGetAttachment(srv *server.Server, mgr *auth.Manager) {
-	server.AddTool(srv, &mcp.Tool{
-		Name: "get_attachment",
-		Description: `Download a Gmail message attachment by ID.
+	desc := `Download a Gmail message attachment by ID.
 
 By default, returns content in the conversation (text for text-like files, base64 for binary).
 Set save_to to write the file to a local directory instead — content never enters the conversation.
-Use read_message to discover attachment IDs.`,
+Use read_message to discover attachment IDs.` + srv.WriteDirsDescription()
+
+	server.AddTool(srv, &mcp.Tool{
+		Name:        "get_attachment",
+		Description: desc,
 		Annotations: &mcp.ToolAnnotations{
 			ReadOnlyHint: true,
 		},

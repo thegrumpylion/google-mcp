@@ -262,13 +262,15 @@ type readInput struct {
 }
 
 func registerRead(srv *server.Server, mgr *auth.Manager) {
-	server.AddTool(srv, &mcp.Tool{
-		Name: "read_file",
-		Description: `Read/download the content of a Google Drive file.
+	desc := `Read/download the content of a Google Drive file.
 
 By default, returns content in the conversation (text directly, base64 for binary, truncated at 512 KB).
 Set save_to to write the file to a local directory instead — content never enters the conversation and there is no size limit.
-For Google Docs/Sheets/Slides, specify export_mime_type to choose the export format.`,
+For Google Docs/Sheets/Slides, specify export_mime_type to choose the export format.` + srv.WriteDirsDescription()
+
+	server.AddTool(srv, &mcp.Tool{
+		Name:        "read_file",
+		Description: desc,
 		Annotations: &mcp.ToolAnnotations{
 			ReadOnlyHint: true,
 		},
@@ -371,19 +373,21 @@ type uploadInput struct {
 }
 
 func registerUpload(srv *server.Server, mgr *auth.Manager) {
-	server.AddTool(srv, &mcp.Tool{
-		Name: "upload_file",
-		Annotations: &mcp.ToolAnnotations{
-			DestructiveHint: server.BoolPtr(false),
-		},
-		Description: `Upload a new file to Google Drive.
+	desc := `Upload a new file to Google Drive.
 
 Content can be provided as:
 - Plain text (content field)
 - Base64-encoded binary (content field + base64=true)
 - Local file path (local_path field, requires --allow-read-dir)
 
-For local files, the name is auto-detected from the filename if not specified.`,
+For local files, the name is auto-detected from the filename if not specified.` + srv.ReadDirsDescription()
+
+	server.AddTool(srv, &mcp.Tool{
+		Name: "upload_file",
+		Annotations: &mcp.ToolAnnotations{
+			DestructiveHint: server.BoolPtr(false),
+		},
+		Description: desc,
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input uploadInput) (*mcp.CallToolResult, any, error) {
 		svc, err := newService(ctx, mgr, input.Account)
 		if err != nil {
