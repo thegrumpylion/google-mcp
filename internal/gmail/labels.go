@@ -189,5 +189,54 @@ func registerDeleteLabel(srv *server.Server, mgr *auth.Manager) {
 	})
 }
 
-// TODO: Planned label tools (from api-coverage.md):
-// - update_label (Labels.Update / Labels.Patch)
+// --- update_label ---
+
+type updateLabelInput struct {
+	Account               string `json:"account" jsonschema:"Account name"`
+	LabelID               string `json:"label_id" jsonschema:"Label ID to update (from list_labels). System labels cannot be updated."`
+	Name                  string `json:"name,omitempty" jsonschema:"New label name (leave empty to keep current)"`
+	LabelListVisibility   string `json:"label_list_visibility,omitempty" jsonschema:"Visibility in label list: labelShow, labelShowIfUnread, or labelHide (leave empty to keep current)"`
+	MessageListVisibility string `json:"message_list_visibility,omitempty" jsonschema:"Visibility in message list: show or hide (leave empty to keep current)"`
+}
+
+func registerUpdateLabel(srv *server.Server, mgr *auth.Manager) {
+	server.AddTool(srv, &mcp.Tool{
+		Name:        "update_label",
+		Description: "Update a custom Gmail label. Can rename labels and change visibility settings. System labels (INBOX, SENT, etc.) cannot be updated.",
+		Annotations: &mcp.ToolAnnotations{
+			IdempotentHint: true,
+		},
+	}, func(ctx context.Context, req *mcp.CallToolRequest, input updateLabelInput) (*mcp.CallToolResult, any, error) {
+		if input.LabelID == "" {
+			return nil, nil, fmt.Errorf("label_id is required")
+		}
+
+		svc, err := newService(ctx, mgr, input.Account)
+		if err != nil {
+			return nil, nil, fmt.Errorf("creating Gmail service: %w", err)
+		}
+
+		label := &gmailapi.Label{}
+		if input.Name != "" {
+			label.Name = input.Name
+		}
+		if input.LabelListVisibility != "" {
+			label.LabelListVisibility = input.LabelListVisibility
+		}
+		if input.MessageListVisibility != "" {
+			label.MessageListVisibility = input.MessageListVisibility
+		}
+
+		updated, err := svc.Users.Labels.Patch("me", input.LabelID, label).Do()
+		if err != nil {
+			return nil, nil, fmt.Errorf("updating label: %w", err)
+		}
+
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{
+				&mcp.TextContent{Text: fmt.Sprintf("Label updated.\n\nLabel ID: %s\nName: %s\nLabel list visibility: %s\nMessage list visibility: %s",
+					updated.Id, updated.Name, updated.LabelListVisibility, updated.MessageListVisibility)},
+			},
+		}, nil, nil
+	})
+}

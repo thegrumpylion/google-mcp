@@ -95,11 +95,15 @@ func TestToolNames(t *testing.T) {
 	got := listToolNames(t, server)
 
 	want := []string{
+		"batch_delete_messages",
 		"create_draft",
+		"create_filter",
 		"create_label",
 		"delete_draft",
+		"delete_filter",
 		"delete_label",
 		"delete_message",
+		"delete_thread",
 		"get_attachment",
 		"get_draft",
 		"get_label",
@@ -107,7 +111,10 @@ func TestToolNames(t *testing.T) {
 		"get_vacation",
 		"list_accounts",
 		"list_drafts",
+		"list_filters",
+		"list_history",
 		"list_labels",
+		"list_send_as",
 		"list_threads",
 		"modify_messages",
 		"modify_thread",
@@ -117,9 +124,12 @@ func TestToolNames(t *testing.T) {
 		"search_messages",
 		"send_draft",
 		"send_message",
+		"trash_message",
 		"trash_thread",
+		"untrash_message",
 		"untrash_thread",
 		"update_draft",
+		"update_label",
 		"update_vacation",
 	}
 
@@ -147,6 +157,7 @@ func TestToolAnnotations(t *testing.T) {
 		"list_accounts", "search_messages", "read_message", "read_thread",
 		"list_labels", "get_attachment", "list_drafts", "get_draft",
 		"get_profile", "get_label", "get_vacation", "list_threads",
+		"list_history", "list_filters", "list_send_as",
 	}
 	for _, name := range readOnly {
 		tool := toolMap[name]
@@ -162,8 +173,10 @@ func TestToolAnnotations(t *testing.T) {
 	mutations := []string{
 		"send_message", "modify_messages", "modify_thread",
 		"create_draft", "update_draft", "delete_draft", "send_draft",
-		"create_label", "delete_label", "delete_message",
-		"trash_thread", "untrash_thread", "update_vacation",
+		"create_label", "delete_label", "update_label", "delete_message",
+		"trash_thread", "untrash_thread", "delete_thread",
+		"trash_message", "untrash_message", "batch_delete_messages",
+		"update_vacation", "create_filter", "delete_filter",
 		"save_attachment_to_drive",
 	}
 	for _, name := range mutations {
@@ -754,9 +767,9 @@ func TestToolNames_WithLocalFS(t *testing.T) {
 
 	got := listToolNames(t, srv)
 
-	// Should include all 26 base tools + 2 localfs tools = 28.
-	if len(got) != 28 {
-		t.Fatalf("got %d tools, want 28\ngot: %v", len(got), got)
+	// Should include all 36 base tools + 2 localfs tools = 38.
+	if len(got) != 38 {
+		t.Fatalf("got %d tools, want 38\ngot: %v", len(got), got)
 	}
 
 	// Verify the localfs tools are present.

@@ -29,24 +29,30 @@ var Scopes = []string{
 func RegisterTools(srv *server.Server, mgr *auth.Manager) {
 	server.RegisterAccountsListTool(srv, mgr)
 	server.RegisterLocalFSTools(srv)
-	// messages.go
+	// profile.go
 	registerGetProfile(srv, mgr)
+	// messages.go
 	registerSearch(srv, mgr)
 	registerRead(srv, mgr)
 	registerSend(srv, mgr)
 	registerModify(srv, mgr)
 	registerDeleteMessage(srv, mgr)
+	registerTrashMessage(srv, mgr)
+	registerUntrashMessage(srv, mgr)
+	registerBatchDeleteMessages(srv, mgr)
 	// threads.go
 	registerListThreads(srv, mgr)
 	registerReadThread(srv, mgr)
 	registerThreadModify(srv, mgr)
 	registerTrashThread(srv, mgr)
 	registerUntrashThread(srv, mgr)
+	registerDeleteThread(srv, mgr)
 	// labels.go
 	registerListLabels(srv, mgr)
 	registerGetLabel(srv, mgr)
 	registerCreateLabel(srv, mgr)
 	registerDeleteLabel(srv, mgr)
+	registerUpdateLabel(srv, mgr)
 	// attachments.go
 	registerGetAttachment(srv, mgr)
 	// drafts.go
@@ -56,9 +62,15 @@ func RegisterTools(srv *server.Server, mgr *auth.Manager) {
 	registerDraftUpdate(srv, mgr)
 	registerDraftDelete(srv, mgr)
 	registerDraftSend(srv, mgr)
+	// history.go
+	registerListHistory(srv, mgr)
 	// settings.go
 	registerGetVacation(srv, mgr)
 	registerUpdateVacation(srv, mgr)
+	registerListFilters(srv, mgr)
+	registerCreateFilter(srv, mgr)
+	registerDeleteFilter(srv, mgr)
+	registerListSendAs(srv, mgr)
 	// bridge.go
 	registerSaveAttachmentToDrive(srv, mgr)
 }

@@ -328,7 +328,104 @@ func registerDeleteMessage(srv *server.Server, mgr *auth.Manager) {
 	})
 }
 
-// TODO: Planned message tools (from api-coverage.md):
-// - trash_message (Messages.Trash)
-// - untrash_message (Messages.Untrash)
-// - batch_delete_messages (Messages.BatchDelete)
+// --- trash_message ---
+
+type trashMessageInput struct {
+	Account   string `json:"account" jsonschema:"Account name"`
+	MessageID string `json:"message_id" jsonschema:"Gmail message ID to move to trash"`
+}
+
+func registerTrashMessage(srv *server.Server, mgr *auth.Manager) {
+	server.AddTool(srv, &mcp.Tool{
+		Name:        "trash_message",
+		Description: "Move a Gmail message to the trash. The message will be permanently deleted after 30 days. Use untrash_message to restore.",
+		Annotations: &mcp.ToolAnnotations{},
+	}, func(ctx context.Context, req *mcp.CallToolRequest, input trashMessageInput) (*mcp.CallToolResult, any, error) {
+		svc, err := newService(ctx, mgr, input.Account)
+		if err != nil {
+			return nil, nil, fmt.Errorf("creating Gmail service: %w", err)
+		}
+
+		msg, err := svc.Users.Messages.Trash("me", input.MessageID).Do()
+		if err != nil {
+			return nil, nil, fmt.Errorf("trashing message: %w", err)
+		}
+
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{
+				&mcp.TextContent{Text: fmt.Sprintf("Message %s moved to trash.", msg.Id)},
+			},
+		}, nil, nil
+	})
+}
+
+// --- untrash_message ---
+
+type untrashMessageInput struct {
+	Account   string `json:"account" jsonschema:"Account name"`
+	MessageID string `json:"message_id" jsonschema:"Gmail message ID to restore from trash"`
+}
+
+func registerUntrashMessage(srv *server.Server, mgr *auth.Manager) {
+	server.AddTool(srv, &mcp.Tool{
+		Name:        "untrash_message",
+		Description: "Restore a Gmail message from the trash back to the inbox.",
+		Annotations: &mcp.ToolAnnotations{
+			DestructiveHint: server.BoolPtr(false),
+		},
+	}, func(ctx context.Context, req *mcp.CallToolRequest, input untrashMessageInput) (*mcp.CallToolResult, any, error) {
+		svc, err := newService(ctx, mgr, input.Account)
+		if err != nil {
+			return nil, nil, fmt.Errorf("creating Gmail service: %w", err)
+		}
+
+		msg, err := svc.Users.Messages.Untrash("me", input.MessageID).Do()
+		if err != nil {
+			return nil, nil, fmt.Errorf("untrashing message: %w", err)
+		}
+
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{
+				&mcp.TextContent{Text: fmt.Sprintf("Message %s restored from trash.", msg.Id)},
+			},
+		}, nil, nil
+	})
+}
+
+// --- batch_delete_messages ---
+
+type batchDeleteMessagesInput struct {
+	Account    string   `json:"account" jsonschema:"Account name"`
+	MessageIDs []string `json:"message_ids" jsonschema:"Gmail message IDs to permanently delete (irreversible)"`
+}
+
+func registerBatchDeleteMessages(srv *server.Server, mgr *auth.Manager) {
+	server.AddTool(srv, &mcp.Tool{
+		Name:        "batch_delete_messages",
+		Description: "Permanently delete multiple Gmail messages in a single operation. This action bypasses the trash and is irreversible. The messages cannot be recovered.",
+		Annotations: &mcp.ToolAnnotations{},
+	}, func(ctx context.Context, req *mcp.CallToolRequest, input batchDeleteMessagesInput) (*mcp.CallToolResult, any, error) {
+		if len(input.MessageIDs) == 0 {
+			return nil, nil, fmt.Errorf("message_ids must contain at least one message ID")
+		}
+
+		svc, err := newService(ctx, mgr, input.Account)
+		if err != nil {
+			return nil, nil, fmt.Errorf("creating Gmail service: %w", err)
+		}
+
+		batchReq := &gmailapi.BatchDeleteMessagesRequest{
+			Ids: input.MessageIDs,
+		}
+
+		if err := svc.Users.Messages.BatchDelete("me", batchReq).Do(); err != nil {
+			return nil, nil, fmt.Errorf("batch deleting messages: %w", err)
+		}
+
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{
+				&mcp.TextContent{Text: fmt.Sprintf("%d messages permanently deleted.", len(input.MessageIDs))},
+			},
+		}, nil, nil
+	})
+}

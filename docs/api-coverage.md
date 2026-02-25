@@ -22,10 +22,10 @@ Last updated: 2026-02-25
 
 | Server   | Tools | SDK Methods Covered | Total SDK Methods | Coverage |
 |----------|-------|--------------------:|------------------:|---------:|
-| Gmail    |    26 |                  24 |                80 |      30% |
+| Gmail    |    36 |                  34 |                80 |      43% |
 | Drive    |    20 |                  21 |                58 |      36% |
 | Calendar |    16 |                  16 |                38 |      42% |
-| **Total**| **62**|              **61** |           **176** |  **~35%**|
+| **Total**| **72**|              **71** |           **176** |  **~40%**|
 
 Additionally, 2 **local file tools** (`list_local_files`, `read_local_file`) are conditionally registered on all servers when `--allow-read-dir` or `--allow-write-dir` is set. These are not counted above as they don't map to Google API methods.
 
@@ -63,6 +63,16 @@ Additionally, 2 **local file tools** (`list_local_files`, `read_local_file`) are
 | `delete_draft` | `Drafts.Delete` | Mutation |
 | `send_draft` | `Drafts.Send` | Mutation |
 | `save_attachment_to_drive` | `Messages.Attachments.Get` + Drive `Files.Create` | Mutation (cross-service) |
+| `update_label` | `Labels.Patch` | Mutation |
+| `list_history` | `History.List` | Read |
+| `trash_message` | `Messages.Trash` | Mutation |
+| `untrash_message` | `Messages.Untrash` | Mutation |
+| `batch_delete_messages` | `Messages.BatchDelete` | Mutation |
+| `delete_thread` | `Threads.Delete` | Mutation |
+| `list_filters` | `Settings.Filters.List` | Read |
+| `create_filter` | `Settings.Filters.Create` | Mutation |
+| `delete_filter` | `Settings.Filters.Delete` | Mutation |
+| `list_send_as` | `Settings.SendAs.List` | Read |
 
 ### Gaps
 
@@ -79,14 +89,14 @@ Additionally, 2 **local file tools** (`list_local_files`, `read_local_file`) are
 
 #### Medium Value
 
-- [ ] **Update/Patch label** -- `Labels.Update` / `Labels.Patch` (mutation) -- rename labels, change visibility
-- [ ] **List history** -- `History.List` (read) -- track mailbox changes since a point in time
-- [ ] **Batch delete messages** -- `Messages.BatchDelete` (mutation) -- permanently delete multiple messages (irreversible)
-- [ ] **Trash/Untrash message** -- `Messages.Trash` / `Messages.Untrash` (mutation) -- dedicated endpoints (currently done via modify + labels)
-- [ ] **Delete thread** -- `Threads.Delete` (mutation) -- permanently delete a thread (irreversible)
-- [ ] **List filters** -- `Settings.Filters.List` (read) -- see inbox rules
-- [ ] **Create/Delete filter** -- `Settings.Filters.Create` / `Settings.Filters.Delete` (mutation) -- manage inbox rules
-- [ ] **List send-as aliases** -- `Settings.SendAs.List` (read) -- discover send-as addresses
+- [x] **Update/Patch label** -- `Labels.Patch` (mutation) -- rename labels, change visibility
+- [x] **List history** -- `History.List` (read) -- track mailbox changes since a point in time
+- [x] **Batch delete messages** -- `Messages.BatchDelete` (mutation) -- permanently delete multiple messages (irreversible)
+- [x] **Trash/Untrash message** -- `Messages.Trash` / `Messages.Untrash` (mutation) -- dedicated endpoints
+- [x] **Delete thread** -- `Threads.Delete` (mutation) -- permanently delete a thread (irreversible)
+- [x] **List filters** -- `Settings.Filters.List` (read) -- see inbox rules
+- [x] **Create/Delete filter** -- `Settings.Filters.Create` / `Settings.Filters.Delete` (mutation) -- manage inbox rules
+- [x] **List send-as aliases** -- `Settings.SendAs.List` (read) -- discover send-as addresses
 
 #### Low Value
 

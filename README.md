@@ -8,7 +8,7 @@ Supports multiple Google accounts (e.g. "personal", "work") with a single binary
 
 ## Features
 
-- **Gmail** — search, read, send (with attachments), draft, label management, attachments, vacation settings, cross-service Drive integration
+- **Gmail** — search, read, send (with attachments), drafts, labels, filters, trash/untrash, history, send-as aliases, vacation settings, cross-service Drive integration
 - **Google Drive** — search, list, read, upload, copy, move, share, permissions, shared drives, trash
 - **Google Calendar** — list, create, update, delete events, manage invitations, free/busy queries, calendar CRUD, sharing (ACL)
 - **Multi-account** — use `account="all"` to query across all accounts at once
@@ -354,7 +354,7 @@ save_attachment_to_drive(
 
 ## Available Tools
 
-### Gmail (26 tools)
+### Gmail (36 tools)
 
 | Tool | Description |
 |------|-------------|
@@ -367,14 +367,24 @@ save_attachment_to_drive(
 | `modify_thread` | Add/remove labels on an entire thread |
 | `trash_thread` | Move a thread to trash |
 | `untrash_thread` | Restore a thread from trash |
+| `delete_thread` | Permanently delete a thread (irreversible) |
 | `send_message` | Send an email with attachments (inline base64 or from Google Drive) |
+| `modify_messages` | Batch add/remove labels on messages |
+| `trash_message` | Move a message to trash |
+| `untrash_message` | Restore a message from trash |
+| `delete_message` | Permanently delete a message (irreversible) |
+| `batch_delete_messages` | Permanently delete multiple messages (irreversible) |
 | `list_labels` | List all labels |
 | `get_label` | Get label details (unread/total counts) |
 | `create_label` | Create a custom label |
+| `update_label` | Rename a label or change visibility |
 | `delete_label` | Delete a custom label |
-| `modify_messages` | Batch add/remove labels on messages |
-| `delete_message` | Permanently delete a message |
 | `get_attachment` | Download an attachment (or save to local disk with `save_to`) |
+| `list_history` | Track mailbox changes since a history ID |
+| `list_filters` | List inbox filters (rules) |
+| `create_filter` | Create an inbox filter |
+| `delete_filter` | Delete an inbox filter |
+| `list_send_as` | List send-as aliases |
 | `get_vacation` | Get vacation/auto-reply settings |
 | `update_vacation` | Update vacation/auto-reply settings |
 | `create_draft` | Create a draft (with attachments) |

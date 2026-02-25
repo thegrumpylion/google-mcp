@@ -309,5 +309,32 @@ func registerUntrashThread(srv *server.Server, mgr *auth.Manager) {
 	})
 }
 
-// TODO: Planned thread tools (from api-coverage.md):
-// - delete_thread (Threads.Delete)
+// --- delete_thread ---
+
+type deleteThreadInput struct {
+	Account  string `json:"account" jsonschema:"Account name"`
+	ThreadID string `json:"thread_id" jsonschema:"Gmail thread ID to permanently delete"`
+}
+
+func registerDeleteThread(srv *server.Server, mgr *auth.Manager) {
+	server.AddTool(srv, &mcp.Tool{
+		Name:        "delete_thread",
+		Description: "Permanently delete a Gmail thread and all its messages. This action bypasses the trash and is irreversible. The thread cannot be recovered.",
+		Annotations: &mcp.ToolAnnotations{},
+	}, func(ctx context.Context, req *mcp.CallToolRequest, input deleteThreadInput) (*mcp.CallToolResult, any, error) {
+		svc, err := newService(ctx, mgr, input.Account)
+		if err != nil {
+			return nil, nil, fmt.Errorf("creating Gmail service: %w", err)
+		}
+
+		if err := svc.Users.Threads.Delete("me", input.ThreadID).Do(); err != nil {
+			return nil, nil, fmt.Errorf("deleting thread: %w", err)
+		}
+
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{
+				&mcp.TextContent{Text: fmt.Sprintf("Thread %s permanently deleted.", input.ThreadID)},
+			},
+		}, nil, nil
+	})
+}
