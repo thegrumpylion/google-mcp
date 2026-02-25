@@ -444,7 +444,166 @@ Valid responses:
 	})
 }
 
-// TODO: Planned event tools (from api-coverage.md):
-// - quick_add_event (Events.QuickAdd) — create event from natural language
-// - list_recurring_instances (Events.Instances) — list occurrences of a recurring event
-// - move_event (Events.Move) — move event to a different calendar
+// --- quick_add_event ---
+
+type quickAddEventInput struct {
+	Account    string `json:"account" jsonschema:"Account name"`
+	CalendarID string `json:"calendar_id,omitempty" jsonschema:"Calendar ID (default: 'primary')"`
+	Text       string `json:"text" jsonschema:"Natural language event description (e.g. 'Lunch with Bob tomorrow at noon')"`
+}
+
+func registerQuickAddEvent(srv *server.Server, mgr *auth.Manager) {
+	server.AddTool(srv, &mcp.Tool{
+		Name: "quick_add_event",
+		Annotations: &mcp.ToolAnnotations{
+			DestructiveHint: server.BoolPtr(false),
+		},
+		Description: "Create a calendar event from a natural language description (e.g. \"Lunch with Bob tomorrow at noon\"). Google parses the text to extract event details.",
+	}, func(ctx context.Context, req *mcp.CallToolRequest, input quickAddEventInput) (*mcp.CallToolResult, any, error) {
+		if input.Text == "" {
+			return nil, nil, fmt.Errorf("text is required")
+		}
+
+		svc, err := newService(ctx, mgr, input.Account)
+		if err != nil {
+			return nil, nil, fmt.Errorf("creating Calendar service: %w", err)
+		}
+
+		calendarID := input.CalendarID
+		if calendarID == "" {
+			calendarID = "primary"
+		}
+
+		created, err := svc.Events.QuickAdd(calendarID, input.Text).Do()
+		if err != nil {
+			return nil, nil, fmt.Errorf("quick-adding event: %w", err)
+		}
+
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{
+				&mcp.TextContent{Text: fmt.Sprintf("Event created.\n\nEvent ID: %s\nLink: %s\n\n%s",
+					created.Id, created.HtmlLink, formatEvent(created, input.Account))},
+			},
+		}, nil, nil
+	})
+}
+
+// --- list_event_instances ---
+
+type listEventInstancesInput struct {
+	Account    string `json:"account" jsonschema:"Account name"`
+	CalendarID string `json:"calendar_id,omitempty" jsonschema:"Calendar ID (default: 'primary')"`
+	EventID    string `json:"event_id" jsonschema:"Recurring event ID to list instances of"`
+	TimeMin    string `json:"time_min,omitempty" jsonschema:"Start of time range in RFC3339 format. Default: now"`
+	TimeMax    string `json:"time_max,omitempty" jsonschema:"End of time range in RFC3339 format. Default: 30 days from now"`
+	MaxResults int64  `json:"max_results,omitempty" jsonschema:"Maximum number of instances to return (default 25, max 100)"`
+}
+
+func registerListEventInstances(srv *server.Server, mgr *auth.Manager) {
+	server.AddTool(srv, &mcp.Tool{
+		Name:        "list_event_instances",
+		Description: "List individual occurrences of a recurring calendar event. Use this to see when a repeating event occurs within a time range.",
+		Annotations: &mcp.ToolAnnotations{
+			ReadOnlyHint: true,
+		},
+	}, func(ctx context.Context, req *mcp.CallToolRequest, input listEventInstancesInput) (*mcp.CallToolResult, any, error) {
+		svc, err := newService(ctx, mgr, input.Account)
+		if err != nil {
+			return nil, nil, fmt.Errorf("creating Calendar service: %w", err)
+		}
+
+		calendarID := input.CalendarID
+		if calendarID == "" {
+			calendarID = "primary"
+		}
+
+		now := time.Now()
+		timeMin := input.TimeMin
+		if timeMin == "" {
+			timeMin = now.Format(time.RFC3339)
+		}
+		timeMax := input.TimeMax
+		if timeMax == "" {
+			timeMax = now.Add(30 * 24 * time.Hour).Format(time.RFC3339)
+		}
+
+		maxResults := input.MaxResults
+		if maxResults <= 0 {
+			maxResults = 25
+		}
+		if maxResults > 100 {
+			maxResults = 100
+		}
+
+		resp, err := svc.Events.Instances(calendarID, input.EventID).
+			TimeMin(timeMin).
+			TimeMax(timeMax).
+			MaxResults(maxResults).
+			Do()
+		if err != nil {
+			return nil, nil, fmt.Errorf("listing event instances: %w", err)
+		}
+
+		var sb strings.Builder
+		if len(resp.Items) == 0 {
+			sb.WriteString("No instances found in the specified time range.")
+		} else {
+			fmt.Fprintf(&sb, "Found %d instances:\n\n", len(resp.Items))
+			for _, event := range resp.Items {
+				sb.WriteString(formatEvent(event, input.Account))
+				sb.WriteString("\n")
+			}
+		}
+
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{
+				&mcp.TextContent{Text: sb.String()},
+			},
+		}, nil, nil
+	})
+}
+
+// --- move_event ---
+
+type moveEventInput struct {
+	Account       string `json:"account" jsonschema:"Account name"`
+	CalendarID    string `json:"calendar_id,omitempty" jsonschema:"Source calendar ID (default: 'primary')"`
+	EventID       string `json:"event_id" jsonschema:"Event ID to move"`
+	DestinationID string `json:"destination_id" jsonschema:"Destination calendar ID"`
+}
+
+func registerMoveEvent(srv *server.Server, mgr *auth.Manager) {
+	server.AddTool(srv, &mcp.Tool{
+		Name:        "move_event",
+		Description: "Move a calendar event to a different calendar. The event is removed from the source calendar and added to the destination.",
+		Annotations: &mcp.ToolAnnotations{
+			IdempotentHint: true,
+		},
+	}, func(ctx context.Context, req *mcp.CallToolRequest, input moveEventInput) (*mcp.CallToolResult, any, error) {
+		if input.DestinationID == "" {
+			return nil, nil, fmt.Errorf("destination_id is required")
+		}
+
+		svc, err := newService(ctx, mgr, input.Account)
+		if err != nil {
+			return nil, nil, fmt.Errorf("creating Calendar service: %w", err)
+		}
+
+		calendarID := input.CalendarID
+		if calendarID == "" {
+			calendarID = "primary"
+		}
+
+		moved, err := svc.Events.Move(calendarID, input.EventID, input.DestinationID).Do()
+		if err != nil {
+			return nil, nil, fmt.Errorf("moving event: %w", err)
+		}
+
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{
+				&mcp.TextContent{Text: fmt.Sprintf("Event moved to calendar %s.\n\nEvent ID: %s\nLink: %s\n\n%s",
+					input.DestinationID, moved.Id, moved.HtmlLink, formatEvent(moved, input.Account))},
+			},
+		}, nil, nil
+	})
+}

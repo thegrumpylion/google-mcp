@@ -13,9 +13,10 @@ import (
 )
 
 // Scopes required by the Calendar tools.
+// CalendarScope is the full-access scope, required for ACL operations and calendar CRUD.
+// It is a superset of calendar.readonly and calendar.events.
 var Scopes = []string{
-	calendar.CalendarReadonlyScope,
-	calendar.CalendarEventsScope,
+	calendar.CalendarScope,
 }
 
 // RegisterTools registers all Calendar MCP tools on the given server.
@@ -24,6 +25,8 @@ func RegisterTools(srv *server.Server, mgr *auth.Manager) {
 	server.RegisterLocalFSTools(srv)
 	// calendars.go
 	registerListCalendars(srv, mgr)
+	registerCreateCalendar(srv, mgr)
+	registerDeleteCalendar(srv, mgr)
 	// events.go
 	registerListEvents(srv, mgr)
 	registerGetEvent(srv, mgr)
@@ -31,6 +34,14 @@ func RegisterTools(srv *server.Server, mgr *auth.Manager) {
 	registerUpdateEvent(srv, mgr)
 	registerDeleteEvent(srv, mgr)
 	registerRespondEvent(srv, mgr)
+	registerQuickAddEvent(srv, mgr)
+	registerListEventInstances(srv, mgr)
+	registerMoveEvent(srv, mgr)
+	// freebusy.go
+	registerQueryFreeBusy(srv, mgr)
+	// acl.go
+	registerShareCalendar(srv, mgr)
+	registerListCalendarSharing(srv, mgr)
 }
 
 func newService(ctx context.Context, mgr *auth.Manager, account string) (*calendar.Service, error) {

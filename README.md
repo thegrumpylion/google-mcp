@@ -10,7 +10,7 @@ Supports multiple Google accounts (e.g. "personal", "work") with a single binary
 
 - **Gmail** — search, read, send (with attachments), draft, label management, attachments, vacation settings, cross-service Drive integration
 - **Google Drive** — search, list, read, upload, copy, move, share, permissions, shared drives, trash
-- **Google Calendar** — list, create, update, delete events, manage invitations
+- **Google Calendar** — list, create, update, delete events, manage invitations, free/busy queries, calendar CRUD, sharing (ACL)
 - **Multi-account** — use `account="all"` to query across all accounts at once
 - **Per-service servers** — run only what you need
 - **Tool filtering** — `--read-only`, `--enable`, `--disable` for granular control
@@ -78,8 +78,7 @@ Enable the APIs for the services you want to use:
 | Gmail    | `https://www.googleapis.com/auth/gmail.modify` | Read, compose, send, and manage labels |
 | Gmail    | `https://www.googleapis.com/auth/gmail.send` | Send email on your behalf |
 | Drive    | `https://www.googleapis.com/auth/drive` | Full access to Google Drive |
-| Calendar | `https://www.googleapis.com/auth/calendar.readonly` | Read calendar events |
-| Calendar | `https://www.googleapis.com/auth/calendar.events` | Create, update, delete events |
+| Calendar | `https://www.googleapis.com/auth/calendar` | Full access to Google Calendar (events, calendars, sharing) |
 
 4. Click **Update** and then **Save**
 
@@ -411,18 +410,26 @@ save_attachment_to_drive(
 | `list_shared_drives` | List shared drives |
 | `get_shared_drive` | Get shared drive details |
 
-### Google Calendar (8 tools)
+### Google Calendar (16 tools)
 
 | Tool | Description |
 |------|-------------|
 | `list_accounts` | List configured accounts |
 | `list_calendars` | List all accessible calendars |
+| `create_calendar` | Create a new calendar |
+| `delete_calendar` | Delete a secondary calendar |
 | `list_events` | List events in a time range |
 | `get_event` | Get event details |
 | `create_event` | Create a new event |
 | `update_event` | Update an existing event |
 | `delete_event` | Delete an event |
 | `respond_event` | Respond to an invitation (accept/decline/tentative) |
+| `quick_add_event` | Create event from natural language (e.g. "Lunch tomorrow at noon") |
+| `list_event_instances` | List occurrences of a recurring event |
+| `move_event` | Move an event to a different calendar |
+| `query_free_busy` | Check availability for users/calendars in a time range |
+| `share_calendar` | Share a calendar (user, group, domain, or public) |
+| `list_calendar_sharing` | List sharing rules (ACL) for a calendar |
 
 ### Local File Tools (conditional)
 

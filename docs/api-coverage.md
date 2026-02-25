@@ -24,8 +24,8 @@ Last updated: 2026-02-25
 |----------|-------|--------------------:|------------------:|---------:|
 | Gmail    |    26 |                  24 |                80 |      30% |
 | Drive    |    20 |                  21 |                58 |      36% |
-| Calendar |     8 |                   8 |                38 |      21% |
-| **Total**| **54**|              **53** |           **176** |  **~30%**|
+| Calendar |    16 |                  16 |                38 |      42% |
+| **Total**| **62**|              **61** |           **176** |  **~35%**|
 
 Additionally, 2 **local file tools** (`list_local_files`, `read_local_file`) are conditionally registered on all servers when `--allow-read-dir` or `--allow-write-dir` is set. These are not counted above as they don't map to Google API methods.
 
@@ -180,25 +180,33 @@ Additionally, 2 **local file tools** (`list_local_files`, `read_local_file`) are
 |------|--------------|------|
 | `list_accounts` | Internal auth manager | Read |
 | `list_calendars` | `CalendarList.List` | Read |
+| `create_calendar` | `Calendars.Insert` | Mutation |
+| `delete_calendar` | `Calendars.Delete` | Mutation |
 | `list_events` | `Events.List` | Read |
 | `get_event` | `Events.Get` | Read |
 | `create_event` | `Events.Insert` | Mutation |
 | `update_event` | `Events.Get` + `Events.Update` | Mutation |
 | `delete_event` | `Events.Delete` | Mutation |
 | `respond_event` | `Events.Get` + `Events.Patch` | Mutation |
+| `quick_add_event` | `Events.QuickAdd` | Mutation |
+| `list_event_instances` | `Events.Instances` | Read |
+| `move_event` | `Events.Move` | Mutation |
+| `query_free_busy` | `Freebusy.Query` | Read |
+| `share_calendar` | `Acl.Insert` | Mutation |
+| `list_calendar_sharing` | `Acl.List` | Read |
 
 ### Gaps
 
 #### High Value
 
-- [ ] **Quick add event** -- `Events.QuickAdd` (mutation) -- create event from natural language (e.g. "Lunch with Bob tomorrow at noon")
-- [ ] **Query free/busy** -- `Freebusy.Query` (read) -- check availability for users/groups before scheduling
-- [ ] **List recurring instances** -- `Events.Instances` (read) -- list individual occurrences of a recurring event
-- [ ] **Move event** -- `Events.Move` (mutation) -- move event to a different calendar
-- [ ] **Share calendar** -- `Acl.Insert` (mutation) -- share a calendar with another user
-- [ ] **List calendar sharing** -- `Acl.List` (read) -- see who has access to a calendar
-- [ ] **Create calendar** -- `Calendars.Insert` (mutation) -- create a new calendar
-- [ ] **Delete calendar** -- `Calendars.Delete` (mutation) -- remove a calendar
+- [x] **Quick add event** -- `Events.QuickAdd` (mutation) -- create event from natural language (e.g. "Lunch with Bob tomorrow at noon")
+- [x] **Query free/busy** -- `Freebusy.Query` (read) -- check availability for users/groups before scheduling
+- [x] **List recurring instances** -- `Events.Instances` (read) -- list individual occurrences of a recurring event
+- [x] **Move event** -- `Events.Move` (mutation) -- move event to a different calendar
+- [x] **Share calendar** -- `Acl.Insert` (mutation) -- share a calendar with another user
+- [x] **List calendar sharing** -- `Acl.List` (read) -- see who has access to a calendar
+- [x] **Create calendar** -- `Calendars.Insert` (mutation) -- create a new calendar
+- [x] **Delete calendar** -- `Calendars.Delete` (mutation) -- remove a calendar
 
 #### Medium Value
 
@@ -225,7 +233,8 @@ Additionally, 2 **local file tools** (`list_local_files`, `read_local_file`) are
 
 - **Gmail scope:** Uses `MailGoogleComScope` (`https://mail.google.com/`) which is the full-access scope. Required for permanent deletion (`Messages.Delete`, `Threads.Delete`, `Messages.BatchDelete`). It is a superset of `gmail.modify`, `gmail.send`, and `gmail.settings.basic`. Existing users will need to re-authorize after upgrading.
 - **Watch/push notification methods** exist across all three APIs but require webhook infrastructure. Not practical for MCP tools. Deprioritize.
-- **Sharing/permissions is a cross-cutting gap.** Drive now has full permission CRUD (list, get, create, update, delete). Calendar has no ACL tools, Gmail has no delegation.
+- **Calendar scope:** Uses `CalendarScope` (`https://www.googleapis.com/auth/calendar`) which is the full-access scope. Required for ACL operations and calendar CRUD. It is a superset of `calendar.readonly` and `calendar.events`. Existing users will need to re-authorize after upgrading.
+- **Sharing/permissions is a cross-cutting gap.** Drive now has full permission CRUD (list, get, create, update, delete). Calendar has ACL insert + list. Gmail has no delegation.
 - **Settings/admin methods** are consistently low-value for an MCP assistant context.
 - **Deprecated services** (e.g. Teamdrives) should be skipped entirely.
 - **Attachments:** `send_message`, `create_draft`, and `update_draft` support both inline base64 attachments and Google Drive file references (`drive_attachments`). Drive attachments are resolved server-side — file bytes never enter the LLM context window.

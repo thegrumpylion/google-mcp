@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/thegrumpylion/google-mcp/internal/auth"
@@ -179,6 +180,28 @@ func TestFormatEventDetailed_Minimal(t *testing.T) {
 	}
 }
 
+func TestFormatDuration(t *testing.T) {
+	tests := []struct {
+		input time.Duration
+		want  string
+	}{
+		{30 * time.Minute, "30m"},
+		{1 * time.Hour, "1h"},
+		{1*time.Hour + 30*time.Minute, "1h30m"},
+		{2 * time.Hour, "2h"},
+		{0, "0m"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.want, func(t *testing.T) {
+			got := formatDuration(tt.input)
+			if got != tt.want {
+				t.Errorf("formatDuration(%v) = %q, want %q", tt.input, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestAccountScopes(t *testing.T) {
 	scopes := AccountScopes()
 	if len(scopes) == 0 {
@@ -234,13 +257,21 @@ func TestToolNames(t *testing.T) {
 	sort.Strings(got)
 
 	want := []string{
+		"create_calendar",
 		"create_event",
+		"delete_calendar",
 		"delete_event",
 		"get_event",
 		"list_accounts",
+		"list_calendar_sharing",
 		"list_calendars",
+		"list_event_instances",
 		"list_events",
+		"move_event",
+		"query_free_busy",
+		"quick_add_event",
 		"respond_event",
+		"share_calendar",
 		"update_event",
 	}
 
@@ -266,6 +297,7 @@ func TestToolAnnotations(t *testing.T) {
 
 	readOnly := []string{
 		"list_accounts", "list_calendars", "list_events", "get_event",
+		"list_event_instances", "query_free_busy", "list_calendar_sharing",
 	}
 	for _, name := range readOnly {
 		tool := toolMap[name]
@@ -280,6 +312,8 @@ func TestToolAnnotations(t *testing.T) {
 
 	mutations := []string{
 		"create_event", "update_event", "delete_event", "respond_event",
+		"quick_add_event", "move_event",
+		"share_calendar", "create_calendar", "delete_calendar",
 	}
 	for _, name := range mutations {
 		tool := toolMap[name]
@@ -317,9 +351,9 @@ func TestToolNames_WithLocalFS(t *testing.T) {
 	}
 	sort.Strings(got)
 
-	// Should include all 8 base tools + 2 localfs tools = 10.
-	if len(got) != 10 {
-		t.Fatalf("got %d tools, want 10\ngot: %v", len(got), got)
+	// Should include all 16 base tools + 2 localfs tools = 18.
+	if len(got) != 18 {
+		t.Fatalf("got %d tools, want 18\ngot: %v", len(got), got)
 	}
 
 	names := make(map[string]bool)
