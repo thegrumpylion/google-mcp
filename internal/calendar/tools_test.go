@@ -257,7 +257,6 @@ func TestToolNames(t *testing.T) {
 	sort.Strings(got)
 
 	want := []string{
-		"clear_calendar",
 		"create_calendar",
 		"create_event",
 		"delete_acl_rule",
@@ -325,7 +324,7 @@ func TestToolAnnotations(t *testing.T) {
 	mutations := []string{
 		"create_event", "update_event", "delete_event", "respond_event",
 		"quick_add_event", "move_event",
-		"share_calendar", "create_calendar", "update_calendar", "delete_calendar", "clear_calendar",
+		"share_calendar", "create_calendar", "update_calendar", "delete_calendar",
 		"subscribe_calendar", "unsubscribe_calendar", "update_calendar_list_entry",
 		"update_acl_rule", "delete_acl_rule",
 	}
@@ -365,9 +364,9 @@ func TestToolNames_WithLocalFS(t *testing.T) {
 	}
 	sort.Strings(got)
 
-	// Should include all 27 base tools + 2 localfs tools = 29.
-	if len(got) != 29 {
-		t.Fatalf("got %d tools, want 29\ngot: %v", len(got), got)
+	// Should include all 26 base tools + 2 localfs tools = 28.
+	if len(got) != 28 {
+		t.Fatalf("got %d tools, want 28\ngot: %v", len(got), got)
 	}
 
 	names := make(map[string]bool)

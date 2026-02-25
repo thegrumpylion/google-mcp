@@ -24,8 +24,8 @@ Last updated: 2026-02-25
 |----------|-------|--------------------:|------------------:|---------:|
 | Gmail    |    36 |                  34 |                80 |      43% |
 | Drive    |    27 |                  28 |                58 |      48% |
-| Calendar |    27 |                  28 |                38 |      74% |
-| **Total**| **90**|              **90** |           **176** |  **~51%**|
+| Calendar |    26 |                  27 |                38 |      71% |
+| **Total**| **89**|              **89** |           **176** |  **~51%**|
 
 Additionally, 2 **local file tools** (`list_local_files`, `read_local_file`) are conditionally registered on all servers when `--allow-read-dir` or `--allow-write-dir` is set. These are not counted above as they don't map to Google API methods.
 
@@ -211,7 +211,6 @@ Additionally, 2 **local file tools** (`list_local_files`, `read_local_file`) are
 | `query_free_busy` | `Freebusy.Query` | Read |
 | `get_calendar` | `Calendars.Get` | Read |
 | `update_calendar` | `Calendars.Get` + `Calendars.Update` | Mutation |
-| `clear_calendar` | `Calendars.Clear` | Mutation |
 | `get_calendar_list_entry` | `CalendarList.Get` | Read |
 | `subscribe_calendar` | `CalendarList.Insert` | Mutation |
 | `unsubscribe_calendar` | `CalendarList.Delete` | Mutation |
@@ -240,7 +239,7 @@ Additionally, 2 **local file tools** (`list_local_files`, `read_local_file`) are
 
 - [x] **Get calendar details** -- `Calendars.Get` (read) -- timezone, description, metadata
 - [x] **Update calendar** -- `Calendars.Update` / `Calendars.Patch` (mutation) -- change name, description, timezone
-- [x] **Clear calendar** -- `Calendars.Clear` (mutation) -- remove all events from a calendar
+- ~~**Clear calendar**~~ -- `Calendars.Clear` (mutation) -- removed: only works on primary calendar, too destructive
 - [x] **Get calendar list entry** -- `CalendarList.Get` (read) -- detailed info about a specific calendar
 - [x] **Subscribe to calendar** -- `CalendarList.Insert` (mutation) -- add an existing calendar to user's list
 - [x] **Unsubscribe from calendar** -- `CalendarList.Delete` (mutation) -- remove a calendar from user's list

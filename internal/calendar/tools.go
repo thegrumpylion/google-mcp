@@ -29,7 +29,6 @@ func RegisterTools(srv *server.Server, mgr *auth.Manager) {
 	registerCreateCalendar(srv, mgr)
 	registerUpdateCalendar(srv, mgr)
 	registerDeleteCalendar(srv, mgr)
-	registerClearCalendar(srv, mgr)
 	registerGetCalendarListEntry(srv, mgr)
 	registerSubscribeCalendar(srv, mgr)
 	registerUnsubscribeCalendar(srv, mgr)

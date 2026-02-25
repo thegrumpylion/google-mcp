@@ -428,7 +428,7 @@ save_attachment_to_drive(
 | `delete_revision` | Delete a specific file revision |
 | `list_changes` | Track changes across Drive since a point in time |
 
-### Google Calendar (27 tools)
+### Google Calendar (26 tools)
 
 | Tool | Description |
 |------|-------------|
@@ -438,7 +438,6 @@ save_attachment_to_drive(
 | `create_calendar` | Create a new calendar |
 | `update_calendar` | Update a calendar's name, description, or timezone |
 | `delete_calendar` | Delete a secondary calendar |
-| `clear_calendar` | Remove all events from a calendar |
 | `get_calendar_list_entry` | Get detailed calendar list entry (color, notifications, visibility) |
 | `subscribe_calendar` | Subscribe to a public or shared calendar |
 | `unsubscribe_calendar` | Remove a calendar from your list |

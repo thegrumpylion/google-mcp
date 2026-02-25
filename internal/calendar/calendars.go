@@ -301,40 +301,6 @@ func registerUpdateCalendar(srv *server.Server, mgr *auth.Manager) {
 	})
 }
 
-// --- clear_calendar ---
-
-type clearCalendarInput struct {
-	Account    string `json:"account" jsonschema:"Account name"`
-	CalendarID string `json:"calendar_id" jsonschema:"Calendar ID to clear"`
-}
-
-func registerClearCalendar(srv *server.Server, mgr *auth.Manager) {
-	server.AddTool(srv, &mcp.Tool{
-		Name:        "clear_calendar",
-		Description: "Remove all events from a calendar. The calendar itself is not deleted. This action is permanent and cannot be undone.",
-		Annotations: &mcp.ToolAnnotations{},
-	}, func(ctx context.Context, req *mcp.CallToolRequest, input clearCalendarInput) (*mcp.CallToolResult, any, error) {
-		if input.CalendarID == "" {
-			return nil, nil, fmt.Errorf("calendar_id is required")
-		}
-
-		svc, err := newService(ctx, mgr, input.Account)
-		if err != nil {
-			return nil, nil, fmt.Errorf("creating Calendar service: %w", err)
-		}
-
-		if err := svc.Calendars.Clear(input.CalendarID).Do(); err != nil {
-			return nil, nil, fmt.Errorf("clearing calendar: %w", err)
-		}
-
-		return &mcp.CallToolResult{
-			Content: []mcp.Content{
-				&mcp.TextContent{Text: fmt.Sprintf("All events cleared from calendar %s.", input.CalendarID)},
-			},
-		}, nil, nil
-	})
-}
-
 // --- get_calendar_list_entry ---
 
 type getCalendarListEntryInput struct {
