@@ -8,7 +8,7 @@ Supports multiple Google accounts (e.g. "personal", "work") with a single binary
 
 ## Features
 
-- **Gmail** — search, read, send, draft, label management, attachments, vacation settings
+- **Gmail** — search, read, send (with attachments), draft, label management, attachments, vacation settings, cross-service Drive integration
 - **Google Drive** — search, list, read, upload, copy, move, share, permissions, shared drives, trash
 - **Google Calendar** — list, create, update, delete events, manage invitations
 - **Multi-account** — use `account="all"` to query across all accounts at once
@@ -230,7 +230,7 @@ google-mcp drive --read-only --disable list_shared_drives,get_shared_drive
 
 ## Available Tools
 
-### Gmail (25 tools)
+### Gmail (26 tools)
 
 | Tool | Description |
 |------|-------------|
@@ -243,7 +243,7 @@ google-mcp drive --read-only --disable list_shared_drives,get_shared_drive
 | `modify_thread` | Add/remove labels on an entire thread |
 | `trash_thread` | Move a thread to trash |
 | `untrash_thread` | Restore a thread from trash |
-| `send_message` | Send an email (with reply/CC/BCC support) |
+| `send_message` | Send an email with attachments (inline base64 or from Google Drive) |
 | `list_labels` | List all labels |
 | `get_label` | Get label details (unread/total counts) |
 | `create_label` | Create a custom label |
@@ -253,12 +253,13 @@ google-mcp drive --read-only --disable list_shared_drives,get_shared_drive
 | `get_attachment` | Download an attachment |
 | `get_vacation` | Get vacation/auto-reply settings |
 | `update_vacation` | Update vacation/auto-reply settings |
-| `create_draft` | Create a draft |
+| `create_draft` | Create a draft (with attachments) |
 | `list_drafts` | List drafts |
 | `get_draft` | Get a draft by ID |
-| `update_draft` | Update a draft |
+| `update_draft` | Update a draft (with attachments) |
 | `delete_draft` | Delete a draft |
 | `send_draft` | Send an existing draft |
+| `save_attachment_to_drive` | Save a Gmail attachment directly to Google Drive (server-side) |
 
 ### Google Drive (20 tools)
 

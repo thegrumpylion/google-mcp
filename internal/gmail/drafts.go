@@ -27,6 +27,10 @@ func registerDraftCreate(srv *server.Server, mgr *auth.Manager) {
 		},
 		Description: "Create a Gmail draft. The draft is saved but not sent. Use send_draft to send it later, or list_drafts to see all drafts.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input draftCreateInput) (*mcp.CallToolResult, any, error) {
+		if err := resolveDriveAttachments(ctx, mgr, &input.composeInput); err != nil {
+			return nil, nil, err
+		}
+
 		svc, err := newService(ctx, mgr, input.Account)
 		if err != nil {
 			return nil, nil, fmt.Errorf("creating Gmail service: %w", err)
@@ -228,6 +232,10 @@ func registerDraftUpdate(srv *server.Server, mgr *auth.Manager) {
 		},
 		Description: "Update an existing Gmail draft with new content. Replaces the draft message entirely.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input draftUpdateInput) (*mcp.CallToolResult, any, error) {
+		if err := resolveDriveAttachments(ctx, mgr, &input.composeInput); err != nil {
+			return nil, nil, err
+		}
+
 		svc, err := newService(ctx, mgr, input.Account)
 		if err != nil {
 			return nil, nil, fmt.Errorf("creating Gmail service: %w", err)

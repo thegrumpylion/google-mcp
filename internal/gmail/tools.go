@@ -9,6 +9,7 @@ import (
 
 	"github.com/thegrumpylion/google-mcp/internal/auth"
 	"github.com/thegrumpylion/google-mcp/internal/server"
+	"google.golang.org/api/drive/v3"
 	"google.golang.org/api/gmail/v1"
 )
 
@@ -16,8 +17,12 @@ import (
 // MailGoogleComScope grants full access to the mailbox including permanent
 // deletion, settings, send, and all read/write operations. It is a superset
 // of GmailModifyScope, GmailSendScope, and GmailSettingsBasicScope.
+// DriveScope is included for bridge tools (save_attachment_to_drive,
+// get_drive_file_content) that transfer data between Gmail and Drive
+// server-side.
 var Scopes = []string{
 	gmail.MailGoogleComScope,
+	drive.DriveScope,
 }
 
 // RegisterTools registers all Gmail MCP tools on the given server.
@@ -53,6 +58,8 @@ func RegisterTools(srv *server.Server, mgr *auth.Manager) {
 	// settings.go
 	registerGetVacation(srv, mgr)
 	registerUpdateVacation(srv, mgr)
+	// bridge.go
+	registerSaveAttachmentToDrive(srv, mgr)
 }
 
 func newService(ctx context.Context, mgr *auth.Manager, account string) (*gmail.Service, error) {

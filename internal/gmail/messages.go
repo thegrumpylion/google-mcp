@@ -174,12 +174,20 @@ type sendInput struct {
 
 func registerSend(srv *server.Server, mgr *auth.Manager) {
 	server.AddTool(srv, &mcp.Tool{
-		Name:        "send_message",
-		Description: "Send an email via Gmail. Supports To, CC, BCC, and replying to existing messages.",
+		Name: "send_message",
+		Description: `Send an email via Gmail. Supports To, CC, BCC, and replying to existing messages.
+
+Attachments can be provided inline (base64-encoded content) or from Google Drive
+(by file ID — content is fetched server-side and never enters the conversation).`,
 		Annotations: &mcp.ToolAnnotations{
 			DestructiveHint: server.BoolPtr(false),
 		},
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input sendInput) (*mcp.CallToolResult, any, error) {
+		// Resolve Drive attachments server-side before building the message.
+		if err := resolveDriveAttachments(ctx, mgr, &input.composeInput); err != nil {
+			return nil, nil, err
+		}
+
 		svc, err := newService(ctx, mgr, input.Account)
 		if err != nil {
 			return nil, nil, fmt.Errorf("creating Gmail service: %w", err)

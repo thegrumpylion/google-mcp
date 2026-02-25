@@ -22,10 +22,10 @@ Last updated: 2026-02-25
 
 | Server   | Tools | SDK Methods Covered | Total SDK Methods | Coverage |
 |----------|-------|--------------------:|------------------:|---------:|
-| Gmail    |    25 |                  23 |                80 |      29% |
+| Gmail    |    26 |                  24 |                80 |      30% |
 | Drive    |    20 |                  21 |                58 |      36% |
 | Calendar |     8 |                   8 |                38 |      21% |
-| **Total**| **53**|              **52** |           **176** |  **~30%**|
+| **Total**| **54**|              **53** |           **176** |  **~30%**|
 
 ---
 
@@ -60,6 +60,7 @@ Last updated: 2026-02-25
 | `update_draft` | `Drafts.Update` | Mutation |
 | `delete_draft` | `Drafts.Delete` | Mutation |
 | `send_draft` | `Drafts.Send` | Mutation |
+| `save_attachment_to_drive` | `Messages.Attachments.Get` + Drive `Files.Create` | Mutation (cross-service) |
 
 ### Gaps
 
@@ -225,3 +226,5 @@ Last updated: 2026-02-25
 - **Sharing/permissions is a cross-cutting gap.** Drive now has full permission CRUD (list, get, create, update, delete). Calendar has no ACL tools, Gmail has no delegation.
 - **Settings/admin methods** are consistently low-value for an MCP assistant context.
 - **Deprecated services** (e.g. Teamdrives) should be skipped entirely.
+- **Attachments:** `send_message`, `create_draft`, and `update_draft` support both inline base64 attachments and Google Drive file references (`drive_attachments`). Drive attachments are resolved server-side — file bytes never enter the LLM context window.
+- **Cross-service bridge:** The `internal/bridge` package provides `SaveAttachmentToDrive` and `ReadDriveFile` functions that transfer data between Gmail and Drive server-side. The gmail server includes Drive scope for this purpose. The `save_attachment_to_drive` tool and the `drive_attachments` compose field use this package.
