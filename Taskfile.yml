@@ -12,9 +12,14 @@ tasks:
       - go run .
 
   test:
-    desc: Run tests
+    desc: Run unit tests (fast, no credentials needed)
     cmds:
-      - go test -race ./...
+      - go test -race -short ./...
+
+  test:integration:
+    desc: Run all tests including integration (requires credentials and accounts)
+    cmds:
+      - go test -race -timeout 5m ./...
 
   lint:
     desc: Run linter
