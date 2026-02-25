@@ -33,6 +33,14 @@ func RegisterTools(server *mcp.Server, mgr *auth.Manager) {
 	registerMove(server, mgr)
 	registerCopy(server, mgr)
 	registerShare(server, mgr)
+	registerListPermissions(server, mgr)
+	registerGetPermission(server, mgr)
+	registerUpdatePermission(server, mgr)
+	registerDeletePermission(server, mgr)
+	registerEmptyTrash(server, mgr)
+	registerGetAbout(server, mgr)
+	registerListSharedDrives(server, mgr)
+	registerGetSharedDrive(server, mgr)
 }
 
 func newService(ctx context.Context, mgr *auth.Manager, account string) (*drive.Service, error) {

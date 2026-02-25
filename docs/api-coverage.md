@@ -23,9 +23,9 @@ Last updated: 2026-02-25
 | Server   | Tools | SDK Methods Covered | Total SDK Methods | Coverage |
 |----------|-------|--------------------:|------------------:|---------:|
 | Gmail    |    25 |                  23 |                80 |      29% |
-| Drive    |    12 |                  13 |                58 |      22% |
+| Drive    |    20 |                  21 |                58 |      36% |
 | Calendar |     8 |                   8 |                38 |      21% |
-| **Total**| **45**|              **44** |           **176** |  **~25%**|
+| **Total**| **53**|              **52** |           **176** |  **~30%**|
 
 ---
 
@@ -116,19 +116,27 @@ Last updated: 2026-02-25
 | `move_file` | `Files.Update` (parents) | Mutation |
 | `copy_file` | `Files.Copy` | Mutation |
 | `share_file` | `Permissions.Create` | Mutation |
+| `list_permissions` | `Permissions.List` | Read |
+| `get_permission` | `Permissions.Get` | Read |
+| `update_permission` | `Permissions.Update` | Mutation |
+| `delete_permission` | `Permissions.Delete` | Mutation |
+| `empty_trash` | `Files.EmptyTrash` | Mutation |
+| `get_about` | `About.Get` | Read |
+| `list_shared_drives` | `Drives.List` | Read |
+| `get_shared_drive` | `Drives.Get` | Read |
 
 ### Gaps
 
 #### High Value
 
-- [ ] **List permissions** -- `Permissions.List` (read) -- see who has access to a file
-- [ ] **Get permission** -- `Permissions.Get` (read) -- inspect a specific permission
-- [ ] **Update permission** -- `Permissions.Update` (mutation) -- change access level (e.g. writer to reader)
-- [ ] **Delete permission (unshare)** -- `Permissions.Delete` (mutation) -- revoke access
-- [ ] **Empty trash** -- `Files.EmptyTrash` (mutation) -- clear all trashed files
-- [ ] **Get about/quota** -- `About.Get` (read) -- storage usage, user info, supported export formats
-- [ ] **List shared drives** -- `Drives.List` (read) -- discover shared drives
-- [ ] **Get shared drive** -- `Drives.Get` (read) -- shared drive details
+- [x] **List permissions** -- `Permissions.List` (read) -- see who has access to a file
+- [x] **Get permission** -- `Permissions.Get` (read) -- inspect a specific permission
+- [x] **Update permission** -- `Permissions.Update` (mutation) -- change access level (e.g. writer to reader)
+- [x] **Delete permission (unshare)** -- `Permissions.Delete` (mutation) -- revoke access
+- [x] **Empty trash** -- `Files.EmptyTrash` (mutation) -- clear all trashed files
+- [x] **Get about/quota** -- `About.Get` (read) -- storage usage, user info, supported export formats
+- [x] **List shared drives** -- `Drives.List` (read) -- discover shared drives
+- [x] **Get shared drive** -- `Drives.Get` (read) -- shared drive details
 
 #### Medium Value
 
@@ -214,6 +222,6 @@ Last updated: 2026-02-25
 
 - **Gmail scope:** Uses `MailGoogleComScope` (`https://mail.google.com/`) which is the full-access scope. Required for permanent deletion (`Messages.Delete`, `Threads.Delete`, `Messages.BatchDelete`). It is a superset of `gmail.modify`, `gmail.send`, and `gmail.settings.basic`. Existing users will need to re-authorize after upgrading.
 - **Watch/push notification methods** exist across all three APIs but require webhook infrastructure. Not practical for MCP tools. Deprioritize.
-- **Sharing/permissions is a cross-cutting gap.** Drive can share but not inspect/revoke, Calendar has no ACL tools, Gmail has no delegation.
+- **Sharing/permissions is a cross-cutting gap.** Drive now has full permission CRUD (list, get, create, update, delete). Calendar has no ACL tools, Gmail has no delegation.
 - **Settings/admin methods** are consistently low-value for an MCP assistant context.
 - **Deprecated services** (e.g. Teamdrives) should be skipped entirely.

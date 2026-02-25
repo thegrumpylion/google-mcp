@@ -131,6 +131,75 @@ func TestFormatFileList_Empty(t *testing.T) {
 	}
 }
 
+func TestFormatPermission(t *testing.T) {
+	perm := &driveapi.Permission{
+		Id:           "perm-123",
+		Role:         "writer",
+		Type:         "user",
+		DisplayName:  "Alice",
+		EmailAddress: "alice@example.com",
+	}
+
+	result := formatPermission(perm)
+
+	if !strings.Contains(result, "perm-123") {
+		t.Error("result should contain permission ID")
+	}
+	if !strings.Contains(result, "writer") {
+		t.Error("result should contain role")
+	}
+	if !strings.Contains(result, "user") {
+		t.Error("result should contain type")
+	}
+	if !strings.Contains(result, "Alice") {
+		t.Error("result should contain display name")
+	}
+	if !strings.Contains(result, "alice@example.com") {
+		t.Error("result should contain email address")
+	}
+}
+
+func TestFormatPermission_Anyone(t *testing.T) {
+	perm := &driveapi.Permission{
+		Id:   "anyoneWithLink",
+		Role: "reader",
+		Type: "anyone",
+	}
+
+	result := formatPermission(perm)
+
+	if !strings.Contains(result, "anyone") {
+		t.Error("result should contain type 'anyone'")
+	}
+	if strings.Contains(result, "Email:") {
+		t.Error("result should not contain email for 'anyone' type")
+	}
+}
+
+func TestFormatBytes(t *testing.T) {
+	tests := []struct {
+		bytes int64
+		want  string
+	}{
+		{0, "0 bytes"},
+		{512, "512 bytes"},
+		{1024, "1.00 KB"},
+		{1536, "1.50 KB"},
+		{1048576, "1.00 MB"},
+		{1073741824, "1.00 GB"},
+		{1099511627776, "1.00 TB"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.want, func(t *testing.T) {
+			got := formatBytes(tt.bytes)
+			if !strings.Contains(got, tt.want) && got != tt.want {
+				t.Errorf("formatBytes(%d) = %q, want to contain %q", tt.bytes, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestAccountScopes(t *testing.T) {
 	scopes := AccountScopes()
 	if len(scopes) == 0 {
@@ -189,14 +258,22 @@ func TestToolNames(t *testing.T) {
 		"copy_file",
 		"create_folder",
 		"delete_file",
+		"delete_permission",
+		"empty_trash",
+		"get_about",
 		"get_file",
+		"get_permission",
+		"get_shared_drive",
 		"list_accounts",
 		"list_files",
+		"list_permissions",
+		"list_shared_drives",
 		"move_file",
 		"read_file",
 		"search_files",
 		"share_file",
 		"update_file",
+		"update_permission",
 		"upload_file",
 	}
 
@@ -222,6 +299,7 @@ func TestToolAnnotations(t *testing.T) {
 
 	readOnly := []string{
 		"list_accounts", "search_files", "list_files", "get_file", "read_file",
+		"list_permissions", "get_permission", "get_about", "list_shared_drives", "get_shared_drive",
 	}
 	for _, name := range readOnly {
 		tool := toolMap[name]
@@ -237,6 +315,7 @@ func TestToolAnnotations(t *testing.T) {
 	mutations := []string{
 		"upload_file", "update_file", "delete_file",
 		"create_folder", "move_file", "copy_file", "share_file",
+		"update_permission", "delete_permission", "empty_trash",
 	}
 	for _, name := range mutations {
 		tool := toolMap[name]
