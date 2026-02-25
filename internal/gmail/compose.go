@@ -23,6 +23,13 @@ type driveAttachment struct {
 	FileID       string `json:"file_id" jsonschema:"Google Drive file ID to attach"`
 }
 
+// localAttachment references a local file to attach to an email.
+// The file is read from a directory allowed via --allow-read-dir or --allow-write-dir.
+// Requires local file access to be enabled on the server.
+type localAttachment struct {
+	Path string `json:"path" jsonschema:"File path relative to an allowed directory (e.g. 'reports/q4.pdf')"`
+}
+
 // composeInput holds the common fields for composing an email message.
 type composeInput struct {
 	To               string            `json:"to" jsonschema:"Recipient email address"`
@@ -32,6 +39,7 @@ type composeInput struct {
 	Bcc              string            `json:"bcc,omitempty" jsonschema:"BCC recipients (comma-separated email addresses)"`
 	Attachments      []attachment      `json:"attachments,omitempty" jsonschema:"File attachments (base64-encoded content)"`
 	DriveAttachments []driveAttachment `json:"drive_attachments,omitempty" jsonschema:"Google Drive files to attach (fetched server-side, content never enters conversation)"`
+	LocalAttachments []localAttachment `json:"local_attachments,omitempty" jsonschema:"Local files to attach (read from directories allowed via --allow-read-dir). Requires local file access to be enabled."`
 }
 
 // composeResult holds the result of building an email message.

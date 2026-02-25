@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"path/filepath"
 	"strings"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -330,12 +331,13 @@ func registerRead(srv *server.Server, mgr *auth.Manager) {
 // --- upload_file ---
 
 type uploadInput struct {
-	Account  string `json:"account" jsonschema:"Account name"`
-	Name     string `json:"name" jsonschema:"File name (e.g. 'report.txt')"`
-	Content  string `json:"content" jsonschema:"File content as text, or base64-encoded binary data"`
-	MIMEType string `json:"mime_type,omitempty" jsonschema:"MIME type of the file (e.g. 'text/plain', 'application/pdf'). Auto-detected if omitted."`
-	FolderID string `json:"folder_id,omitempty" jsonschema:"Parent folder ID to upload into (default: root)"`
-	Base64   bool   `json:"base64,omitempty" jsonschema:"Set to true if content is base64-encoded binary data"`
+	Account   string `json:"account" jsonschema:"Account name"`
+	Name      string `json:"name,omitempty" jsonschema:"File name (e.g. 'report.txt'). Auto-detected from local_path if omitted."`
+	Content   string `json:"content,omitempty" jsonschema:"File content as text, or base64-encoded binary data. Not needed when using local_path."`
+	MIMEType  string `json:"mime_type,omitempty" jsonschema:"MIME type of the file (e.g. 'text/plain', 'application/pdf'). Auto-detected if omitted."`
+	FolderID  string `json:"folder_id,omitempty" jsonschema:"Parent folder ID to upload into (default: root)"`
+	Base64    bool   `json:"base64,omitempty" jsonschema:"Set to true if content is base64-encoded binary data"`
+	LocalPath string `json:"local_path,omitempty" jsonschema:"Path to a local file to upload (relative to an allowed directory). Requires --allow-read-dir to be configured."`
 }
 
 func registerUpload(srv *server.Server, mgr *auth.Manager) {
@@ -344,13 +346,51 @@ func registerUpload(srv *server.Server, mgr *auth.Manager) {
 		Annotations: &mcp.ToolAnnotations{
 			DestructiveHint: server.BoolPtr(false),
 		},
-		Description: `Upload a new file to Google Drive. Provide content as plain text or base64-encoded binary.
+		Description: `Upload a new file to Google Drive.
 
-For text files, just pass the content directly. For binary files, base64-encode the content and set base64=true.`,
+Content can be provided as:
+- Plain text (content field)
+- Base64-encoded binary (content field + base64=true)
+- Local file path (local_path field, requires --allow-read-dir)
+
+For local files, the name is auto-detected from the filename if not specified.`,
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input uploadInput) (*mcp.CallToolResult, any, error) {
 		svc, err := newService(ctx, mgr, input.Account)
 		if err != nil {
 			return nil, nil, fmt.Errorf("creating Drive service: %w", err)
+		}
+
+		var reader io.Reader
+
+		if input.LocalPath != "" {
+			// Read from local filesystem.
+			lfs := srv.LocalFS()
+			if lfs == nil {
+				return nil, nil, fmt.Errorf("local file access is not enabled (use --allow-read-dir)")
+			}
+			rc, _, err := lfs.OpenFile(input.LocalPath)
+			if err != nil {
+				return nil, nil, fmt.Errorf("reading local file: %w", err)
+			}
+			defer rc.Close()
+			reader = rc
+			if input.Name == "" {
+				input.Name = filepath.Base(input.LocalPath)
+			}
+		} else if input.Content == "" {
+			return nil, nil, fmt.Errorf("either content or local_path is required")
+		} else if input.Base64 {
+			data, err := base64.StdEncoding.DecodeString(input.Content)
+			if err != nil {
+				return nil, nil, fmt.Errorf("decoding base64 content: %w", err)
+			}
+			reader = bytes.NewReader(data)
+		} else {
+			reader = strings.NewReader(input.Content)
+		}
+
+		if input.Name == "" {
+			return nil, nil, fmt.Errorf("name is required")
 		}
 
 		file := &drive.File{Name: input.Name}
@@ -359,17 +399,6 @@ For text files, just pass the content directly. For binary files, base64-encode 
 		}
 		if input.FolderID != "" {
 			file.Parents = []string{input.FolderID}
-		}
-
-		var reader io.Reader
-		if input.Base64 {
-			data, err := base64.StdEncoding.DecodeString(input.Content)
-			if err != nil {
-				return nil, nil, fmt.Errorf("decoding base64 content: %w", err)
-			}
-			reader = bytes.NewReader(data)
-		} else {
-			reader = strings.NewReader(input.Content)
 		}
 
 		created, err := svc.Files.Create(file).Media(reader).

@@ -153,7 +153,7 @@ Add to `~/.claude.json` or your project's `.mcp.json`:
 }
 ```
 
-To use read-only mode or tool filtering, add flags to the `args` array:
+To use read-only mode, tool filtering, or local file access, add flags to the `args` array:
 
 ```json
 {
@@ -165,6 +165,23 @@ To use read-only mode or tool filtering, add flags to the `args` array:
     "drive": {
       "command": "google-mcp",
       "args": ["drive", "--disable", "delete_file,empty_trash"]
+    }
+  }
+}
+```
+
+To enable local file attachments and uploads:
+
+```json
+{
+  "mcpServers": {
+    "gmail": {
+      "command": "google-mcp",
+      "args": ["gmail", "--allow-read-dir", "/home/user/documents"]
+    },
+    "drive": {
+      "command": "google-mcp",
+      "args": ["drive", "--allow-read-dir", "/home/user/documents", "--allow-write-dir", "/home/user/downloads"]
     }
   }
 }
@@ -205,9 +222,11 @@ Add to `~/.config/opencode/opencode.json`:
 **Server flags** (gmail, drive, calendar):
 
 ```
---read-only      Only expose read-only tools (no mutations)
---enable         Whitelist of tool names to expose (comma-separated)
---disable        Blacklist of tool names to hide (comma-separated)
+--read-only        Only expose read-only tools (no mutations)
+--enable           Whitelist of tool names to expose (comma-separated)
+--disable          Blacklist of tool names to hide (comma-separated)
+--allow-read-dir   Local directories to allow reading from (repeatable)
+--allow-write-dir  Local directories to allow reading and writing (repeatable)
 ```
 
 `--enable` and `--disable` are mutually exclusive. When `--read-only` is set, `--enable`/`--disable` operate on the read-only subset only.
@@ -226,6 +245,12 @@ google-mcp drive --disable delete_file,empty_trash
 
 # Read-only drive, but exclude shared drive tools
 google-mcp drive --read-only --disable list_shared_drives,get_shared_drive
+
+# Enable local file access for email attachments
+google-mcp gmail --allow-read-dir /home/user/documents --allow-read-dir /home/user/exports
+
+# Enable local file upload to Drive
+google-mcp drive --allow-read-dir /home/user/documents
 ```
 
 ## Cross-Service Integration
@@ -234,10 +259,11 @@ The Gmail server includes built-in Google Drive integration. All data flows serv
 
 ### Email Attachments
 
-`send_message`, `create_draft`, and `update_draft` support two kinds of attachments:
+`send_message`, `create_draft`, and `update_draft` support three kinds of attachments:
 
 - **Inline attachments** — base64-encoded content provided directly in the `attachments` field
 - **Drive attachments** — Google Drive file IDs in the `drive_attachments` field, resolved server-side
+- **Local attachments** — local file paths in the `local_attachments` field, read from allowed directories
 
 Drive attachments can reference files from **any configured account**, not just the sending account. For example, you can send an email from your personal Gmail with a file attached from your work Drive — something even Gmail's web UI can't do.
 
@@ -252,6 +278,30 @@ send_message(
 ```
 
 The server fetches the file bytes from Drive in memory, encodes them as a MIME attachment, and sends via Gmail. The LLM only sees the file ID and a "Message sent" confirmation.
+
+### Local File Access
+
+Local file access is **opt-in only** and disabled by default. Use `--allow-read-dir` or `--allow-write-dir` to grant the MCP server access to specific directories. Path containment is enforced by `os.Root` (Go 1.25+) at the kernel level — `../` traversal and symlink escapes are blocked by the OS.
+
+```
+# Gmail: attach local files to emails
+google-mcp gmail --allow-read-dir ~/documents
+
+send_message(
+  account="personal",
+  to="colleague@example.com",
+  subject="Report",
+  body="See attached.",
+  local_attachments=[{path: "reports/q4.pdf"}]
+)
+```
+
+```
+# Drive: upload local files
+google-mcp drive --allow-read-dir ~/documents
+
+upload_file(account="personal", local_path="reports/q4.pdf")
+```
 
 ### Save Attachment to Drive
 

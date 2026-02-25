@@ -10,6 +10,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/thegrumpylion/google-mcp/internal/auth"
+	"github.com/thegrumpylion/google-mcp/internal/localfs"
 )
 
 // BoolPtr returns a pointer to a bool value. Useful for MCP ToolAnnotations
@@ -28,12 +29,24 @@ type ToolInfo struct {
 // remove tools that don't match the desired filter.
 type Server struct {
 	*mcp.Server
-	tools []ToolInfo
+	tools   []ToolInfo
+	localFS *localfs.FS
 }
 
 // NewServer creates a new Server wrapper around an mcp.Server.
 func NewServer(impl *mcp.Implementation, opts *mcp.ServerOptions) *Server {
 	return &Server{Server: mcp.NewServer(impl, opts)}
+}
+
+// SetLocalFS sets the local filesystem access for the server.
+// Tools can use LocalFS() to read/write local files within allowed directories.
+func (s *Server) SetLocalFS(fs *localfs.FS) {
+	s.localFS = fs
+}
+
+// LocalFS returns the local filesystem access, or nil if not configured.
+func (s *Server) LocalFS() *localfs.FS {
+	return s.localFS
 }
 
 // Tools returns the metadata for all registered tools.

@@ -4,10 +4,12 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"path/filepath"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/thegrumpylion/google-mcp/internal/auth"
 	"github.com/thegrumpylion/google-mcp/internal/bridge"
+	"github.com/thegrumpylion/google-mcp/internal/localfs"
 	"github.com/thegrumpylion/google-mcp/internal/server"
 )
 
@@ -35,6 +37,30 @@ func resolveDriveAttachments(ctx context.Context, mgr *auth.Manager, input *comp
 			Name:     result.FileName,
 			MIMEType: result.MIMEType,
 			Content:  base64.StdEncoding.EncodeToString(result.Data),
+		})
+	}
+	return nil
+}
+
+// resolveLocalAttachments reads local files and appends them to the
+// composeInput's Attachments slice. Files are read from directories
+// allowed via --allow-read-dir or --allow-write-dir.
+func resolveLocalAttachments(lfs *localfs.FS, input *composeInput) error {
+	for i, la := range input.LocalAttachments {
+		if la.Path == "" {
+			return fmt.Errorf("local_attachments[%d]: path is required", i)
+		}
+
+		data, _, err := lfs.ReadFile(la.Path)
+		if err != nil {
+			return fmt.Errorf("local_attachments[%d] (%s): %w", i, la.Path, err)
+		}
+
+		name := filepath.Base(la.Path)
+		input.Attachments = append(input.Attachments, attachment{
+			Name:     name,
+			MIMEType: guessMIMEType(name),
+			Content:  base64.StdEncoding.EncodeToString(data),
 		})
 	}
 	return nil

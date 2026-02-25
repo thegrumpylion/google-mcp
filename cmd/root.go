@@ -12,6 +12,7 @@ import (
 	"github.com/thegrumpylion/google-mcp/internal/calendar"
 	"github.com/thegrumpylion/google-mcp/internal/drive"
 	"github.com/thegrumpylion/google-mcp/internal/gmail"
+	"github.com/thegrumpylion/google-mcp/internal/localfs"
 	"github.com/thegrumpylion/google-mcp/internal/server"
 )
 
@@ -189,8 +190,37 @@ func (f *toolFilterFlags) toToolFilter() server.ToolFilter {
 	}
 }
 
+// localFSFlags holds the CLI flags for local filesystem access.
+type localFSFlags struct {
+	readDirs  []string
+	writeDirs []string
+}
+
+// addLocalFSFlags adds --allow-read-dir and --allow-write-dir flags to a command.
+func addLocalFSFlags(cmd *cobra.Command, f *localFSFlags) {
+	cmd.Flags().StringSliceVar(&f.readDirs, "allow-read-dir", nil, "local directories to allow reading from (repeatable, comma-separated)")
+	cmd.Flags().StringSliceVar(&f.writeDirs, "allow-write-dir", nil, "local directories to allow reading and writing (repeatable, comma-separated)")
+}
+
+// toLocalFS creates a localfs.FS from the CLI flags.
+// Returns nil if no directories are configured (local file access disabled).
+func (f *localFSFlags) toLocalFS() (*localfs.FS, error) {
+	if len(f.readDirs) == 0 && len(f.writeDirs) == 0 {
+		return nil, nil
+	}
+	var dirs []localfs.Dir
+	for _, d := range f.readDirs {
+		dirs = append(dirs, localfs.Dir{Path: d, Mode: localfs.ModeRead})
+	}
+	for _, d := range f.writeDirs {
+		dirs = append(dirs, localfs.Dir{Path: d, Mode: localfs.ModeReadWrite})
+	}
+	return localfs.New(dirs)
+}
+
 func newGmailCmd() *cobra.Command {
 	var flags toolFilterFlags
+	var fsFlags localFSFlags
 	cmd := &cobra.Command{
 		Use:   "gmail",
 		Short: "Start the Gmail MCP server (stdio)",
@@ -200,33 +230,45 @@ func newGmailCmd() *cobra.Command {
   create_draft, list_drafts, send_draft, and more.
 
 Use --read-only to expose only read-only tools.
-Use --enable or --disable for granular tool control.`,
+Use --enable or --disable for granular tool control.
+Use --allow-read-dir to enable local file attachments (opt-in, secure).`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			mgr, err := newManager()
 			if err != nil {
 				return err
 			}
 
-			server := server.NewServer(&mcp.Implementation{
+			srv := server.NewServer(&mcp.Implementation{
 				Name:    "google-mcp-gmail",
 				Version: version,
 			}, nil)
 
-			gmail.RegisterTools(server, mgr)
+			lfs, err := fsFlags.toLocalFS()
+			if err != nil {
+				return err
+			}
+			if lfs != nil {
+				defer lfs.Close()
+				srv.SetLocalFS(lfs)
+			}
 
-			if err := server.ApplyFilter(flags.toToolFilter()); err != nil {
+			gmail.RegisterTools(srv, mgr)
+
+			if err := srv.ApplyFilter(flags.toToolFilter()); err != nil {
 				return err
 			}
 
-			return server.Run(context.Background(), &mcp.StdioTransport{})
+			return srv.Run(context.Background(), &mcp.StdioTransport{})
 		},
 	}
 	addToolFilterFlags(cmd, &flags)
+	addLocalFSFlags(cmd, &fsFlags)
 	return cmd
 }
 
 func newDriveCmd() *cobra.Command {
 	var flags toolFilterFlags
+	var fsFlags localFSFlags
 	cmd := &cobra.Command{
 		Use:   "drive",
 		Short: "Start the Google Drive MCP server (stdio)",
@@ -235,33 +277,45 @@ func newDriveCmd() *cobra.Command {
   update_file, delete_file, create_folder, move_file, copy_file, share_file.
 
 Use --read-only to expose only read-only tools.
-Use --enable or --disable for granular tool control.`,
+Use --enable or --disable for granular tool control.
+Use --allow-read-dir to enable uploading local files (opt-in, secure).`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			mgr, err := newManager()
 			if err != nil {
 				return err
 			}
 
-			server := server.NewServer(&mcp.Implementation{
+			srv := server.NewServer(&mcp.Implementation{
 				Name:    "google-mcp-drive",
 				Version: version,
 			}, nil)
 
-			drive.RegisterTools(server, mgr)
+			lfs, err := fsFlags.toLocalFS()
+			if err != nil {
+				return err
+			}
+			if lfs != nil {
+				defer lfs.Close()
+				srv.SetLocalFS(lfs)
+			}
 
-			if err := server.ApplyFilter(flags.toToolFilter()); err != nil {
+			drive.RegisterTools(srv, mgr)
+
+			if err := srv.ApplyFilter(flags.toToolFilter()); err != nil {
 				return err
 			}
 
-			return server.Run(context.Background(), &mcp.StdioTransport{})
+			return srv.Run(context.Background(), &mcp.StdioTransport{})
 		},
 	}
 	addToolFilterFlags(cmd, &flags)
+	addLocalFSFlags(cmd, &fsFlags)
 	return cmd
 }
 
 func newCalendarCmd() *cobra.Command {
 	var flags toolFilterFlags
+	var fsFlags localFSFlags
 	cmd := &cobra.Command{
 		Use:   "calendar",
 		Short: "Start the Google Calendar MCP server (stdio)",
@@ -270,28 +324,39 @@ func newCalendarCmd() *cobra.Command {
   create_event, update_event, delete_event, respond_event.
 
 Use --read-only to expose only read-only tools.
-Use --enable or --disable for granular tool control.`,
+Use --enable or --disable for granular tool control.
+Use --allow-read-dir to enable local file access (opt-in, secure).`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			mgr, err := newManager()
 			if err != nil {
 				return err
 			}
 
-			server := server.NewServer(&mcp.Implementation{
+			srv := server.NewServer(&mcp.Implementation{
 				Name:    "google-mcp-calendar",
 				Version: version,
 			}, nil)
 
-			calendar.RegisterTools(server, mgr)
+			lfs, err := fsFlags.toLocalFS()
+			if err != nil {
+				return err
+			}
+			if lfs != nil {
+				defer lfs.Close()
+				srv.SetLocalFS(lfs)
+			}
 
-			if err := server.ApplyFilter(flags.toToolFilter()); err != nil {
+			calendar.RegisterTools(srv, mgr)
+
+			if err := srv.ApplyFilter(flags.toToolFilter()); err != nil {
 				return err
 			}
 
-			return server.Run(context.Background(), &mcp.StdioTransport{})
+			return srv.Run(context.Background(), &mcp.StdioTransport{})
 		},
 	}
 	addToolFilterFlags(cmd, &flags)
+	addLocalFSFlags(cmd, &fsFlags)
 	return cmd
 }
 

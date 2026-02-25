@@ -177,12 +177,25 @@ func registerSend(srv *server.Server, mgr *auth.Manager) {
 		Name: "send_message",
 		Description: `Send an email via Gmail. Supports To, CC, BCC, and replying to existing messages.
 
-Attachments can be provided inline (base64-encoded content) or from Google Drive
-(by file ID — content is fetched server-side and never enters the conversation).`,
+Attachments can be provided:
+- Inline (base64-encoded content in the attachments field)
+- From Google Drive (by file ID — content is fetched server-side)
+- From local files (requires --allow-read-dir to be configured)`,
 		Annotations: &mcp.ToolAnnotations{
 			DestructiveHint: server.BoolPtr(false),
 		},
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input sendInput) (*mcp.CallToolResult, any, error) {
+		// Resolve local attachments from allowed directories.
+		if len(input.LocalAttachments) > 0 {
+			lfs := srv.LocalFS()
+			if lfs == nil {
+				return nil, nil, fmt.Errorf("local file access is not enabled (use --allow-read-dir)")
+			}
+			if err := resolveLocalAttachments(lfs, &input.composeInput); err != nil {
+				return nil, nil, err
+			}
+		}
+
 		// Resolve Drive attachments server-side before building the message.
 		if err := resolveDriveAttachments(ctx, mgr, &input.composeInput); err != nil {
 			return nil, nil, err
