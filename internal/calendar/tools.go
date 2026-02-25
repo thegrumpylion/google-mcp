@@ -25,8 +25,15 @@ func RegisterTools(srv *server.Server, mgr *auth.Manager) {
 	server.RegisterLocalFSTools(srv)
 	// calendars.go
 	registerListCalendars(srv, mgr)
+	registerGetCalendar(srv, mgr)
 	registerCreateCalendar(srv, mgr)
+	registerUpdateCalendar(srv, mgr)
 	registerDeleteCalendar(srv, mgr)
+	registerClearCalendar(srv, mgr)
+	registerGetCalendarListEntry(srv, mgr)
+	registerSubscribeCalendar(srv, mgr)
+	registerUnsubscribeCalendar(srv, mgr)
+	registerUpdateCalendarListEntry(srv, mgr)
 	// events.go
 	registerListEvents(srv, mgr)
 	registerGetEvent(srv, mgr)
@@ -42,6 +49,11 @@ func RegisterTools(srv *server.Server, mgr *auth.Manager) {
 	// acl.go
 	registerShareCalendar(srv, mgr)
 	registerListCalendarSharing(srv, mgr)
+	registerGetACLRule(srv, mgr)
+	registerUpdateACLRule(srv, mgr)
+	registerDeleteACLRule(srv, mgr)
+	// colors.go
+	registerGetColors(srv, mgr)
 }
 
 func newService(ctx context.Context, mgr *auth.Manager, account string) (*calendar.Service, error) {

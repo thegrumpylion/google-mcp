@@ -24,8 +24,8 @@ Last updated: 2026-02-25
 |----------|-------|--------------------:|------------------:|---------:|
 | Gmail    |    36 |                  34 |                80 |      43% |
 | Drive    |    27 |                  28 |                58 |      48% |
-| Calendar |    16 |                  16 |                38 |      42% |
-| **Total**| **79**|              **78** |           **176** |  **~44%**|
+| Calendar |    27 |                  28 |                38 |      74% |
+| **Total**| **90**|              **90** |           **176** |  **~51%**|
 
 Additionally, 2 **local file tools** (`list_local_files`, `read_local_file`) are conditionally registered on all servers when `--allow-read-dir` or `--allow-write-dir` is set. These are not counted above as they don't map to Google API methods.
 
@@ -209,8 +209,19 @@ Additionally, 2 **local file tools** (`list_local_files`, `read_local_file`) are
 | `list_event_instances` | `Events.Instances` | Read |
 | `move_event` | `Events.Move` | Mutation |
 | `query_free_busy` | `Freebusy.Query` | Read |
+| `get_calendar` | `Calendars.Get` | Read |
+| `update_calendar` | `Calendars.Get` + `Calendars.Update` | Mutation |
+| `clear_calendar` | `Calendars.Clear` | Mutation |
+| `get_calendar_list_entry` | `CalendarList.Get` | Read |
+| `subscribe_calendar` | `CalendarList.Insert` | Mutation |
+| `unsubscribe_calendar` | `CalendarList.Delete` | Mutation |
+| `update_calendar_list_entry` | `CalendarList.Get` + `CalendarList.Update` | Mutation |
 | `share_calendar` | `Acl.Insert` | Mutation |
 | `list_calendar_sharing` | `Acl.List` | Read |
+| `get_acl_rule` | `Acl.Get` | Read |
+| `update_acl_rule` | `Acl.Get` + `Acl.Update` | Mutation |
+| `delete_acl_rule` | `Acl.Delete` | Mutation |
+| `get_colors` | `Colors.Get` | Read |
 
 ### Gaps
 
@@ -227,15 +238,15 @@ Additionally, 2 **local file tools** (`list_local_files`, `read_local_file`) are
 
 #### Medium Value
 
-- [ ] **Get calendar details** -- `Calendars.Get` (read) -- timezone, description, metadata
-- [ ] **Update calendar** -- `Calendars.Update` / `Calendars.Patch` (mutation) -- change name, description, timezone
-- [ ] **Clear calendar** -- `Calendars.Clear` (mutation) -- remove all events from a calendar
-- [ ] **Get calendar list entry** -- `CalendarList.Get` (read) -- detailed info about a specific calendar
-- [ ] **Subscribe to calendar** -- `CalendarList.Insert` (mutation) -- add an existing calendar to user's list
-- [ ] **Unsubscribe from calendar** -- `CalendarList.Delete` (mutation) -- remove a calendar from user's list
-- [ ] **Update calendar list entry** -- `CalendarList.Update` / `CalendarList.Patch` (mutation) -- color, notifications, visibility
-- [ ] **Get/Update/Delete ACL rule** -- `Acl.Get` / `Acl.Update` / `Acl.Delete` (both) -- manage calendar sharing
-- [ ] **Get colors** -- `Colors.Get` (read) -- available color palette for calendars/events
+- [x] **Get calendar details** -- `Calendars.Get` (read) -- timezone, description, metadata
+- [x] **Update calendar** -- `Calendars.Update` / `Calendars.Patch` (mutation) -- change name, description, timezone
+- [x] **Clear calendar** -- `Calendars.Clear` (mutation) -- remove all events from a calendar
+- [x] **Get calendar list entry** -- `CalendarList.Get` (read) -- detailed info about a specific calendar
+- [x] **Subscribe to calendar** -- `CalendarList.Insert` (mutation) -- add an existing calendar to user's list
+- [x] **Unsubscribe from calendar** -- `CalendarList.Delete` (mutation) -- remove a calendar from user's list
+- [x] **Update calendar list entry** -- `CalendarList.Update` / `CalendarList.Patch` (mutation) -- color, notifications, visibility
+- [x] **Get/Update/Delete ACL rule** -- `Acl.Get` / `Acl.Update` / `Acl.Delete` (both) -- manage calendar sharing
+- [x] **Get colors** -- `Colors.Get` (read) -- available color palette for calendars/events
 
 #### Low Value
 

@@ -257,10 +257,16 @@ func TestToolNames(t *testing.T) {
 	sort.Strings(got)
 
 	want := []string{
+		"clear_calendar",
 		"create_calendar",
 		"create_event",
+		"delete_acl_rule",
 		"delete_calendar",
 		"delete_event",
+		"get_acl_rule",
+		"get_calendar",
+		"get_calendar_list_entry",
+		"get_colors",
 		"get_event",
 		"list_accounts",
 		"list_calendar_sharing",
@@ -272,6 +278,11 @@ func TestToolNames(t *testing.T) {
 		"quick_add_event",
 		"respond_event",
 		"share_calendar",
+		"subscribe_calendar",
+		"unsubscribe_calendar",
+		"update_acl_rule",
+		"update_calendar",
+		"update_calendar_list_entry",
 		"update_event",
 	}
 
@@ -298,6 +309,7 @@ func TestToolAnnotations(t *testing.T) {
 	readOnly := []string{
 		"list_accounts", "list_calendars", "list_events", "get_event",
 		"list_event_instances", "query_free_busy", "list_calendar_sharing",
+		"get_calendar", "get_calendar_list_entry", "get_acl_rule", "get_colors",
 	}
 	for _, name := range readOnly {
 		tool := toolMap[name]
@@ -313,7 +325,9 @@ func TestToolAnnotations(t *testing.T) {
 	mutations := []string{
 		"create_event", "update_event", "delete_event", "respond_event",
 		"quick_add_event", "move_event",
-		"share_calendar", "create_calendar", "delete_calendar",
+		"share_calendar", "create_calendar", "update_calendar", "delete_calendar", "clear_calendar",
+		"subscribe_calendar", "unsubscribe_calendar", "update_calendar_list_entry",
+		"update_acl_rule", "delete_acl_rule",
 	}
 	for _, name := range mutations {
 		tool := toolMap[name]
@@ -351,9 +365,9 @@ func TestToolNames_WithLocalFS(t *testing.T) {
 	}
 	sort.Strings(got)
 
-	// Should include all 16 base tools + 2 localfs tools = 18.
-	if len(got) != 18 {
-		t.Fatalf("got %d tools, want 18\ngot: %v", len(got), got)
+	// Should include all 27 base tools + 2 localfs tools = 29.
+	if len(got) != 29 {
+		t.Fatalf("got %d tools, want 29\ngot: %v", len(got), got)
 	}
 
 	names := make(map[string]bool)

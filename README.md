@@ -10,7 +10,7 @@ Supports multiple Google accounts (e.g. "personal", "work") with a single binary
 
 - **Gmail** — search, read, send (with attachments), drafts, labels, filters, trash/untrash, history, send-as aliases, vacation settings, cross-service Drive integration
 - **Google Drive** — search, list, read, upload, copy, move, share, permissions, shared drives, revisions, change tracking, trash
-- **Google Calendar** — list, create, update, delete events, manage invitations, free/busy queries, calendar CRUD, sharing (ACL)
+- **Google Calendar** — list, create, update, delete events, manage invitations, free/busy queries, calendar CRUD, sharing (ACL), subscriptions, colors
 - **Multi-account** — use `account="all"` to query across all accounts at once
 - **Per-service servers** — run only what you need
 - **Tool filtering** — `--read-only`, `--enable`, `--disable` for granular control
@@ -428,14 +428,21 @@ save_attachment_to_drive(
 | `delete_revision` | Delete a specific file revision |
 | `list_changes` | Track changes across Drive since a point in time |
 
-### Google Calendar (16 tools)
+### Google Calendar (27 tools)
 
 | Tool | Description |
 |------|-------------|
 | `list_accounts` | List configured accounts |
 | `list_calendars` | List all accessible calendars |
+| `get_calendar` | Get calendar details (name, timezone, description) |
 | `create_calendar` | Create a new calendar |
+| `update_calendar` | Update a calendar's name, description, or timezone |
 | `delete_calendar` | Delete a secondary calendar |
+| `clear_calendar` | Remove all events from a calendar |
+| `get_calendar_list_entry` | Get detailed calendar list entry (color, notifications, visibility) |
+| `subscribe_calendar` | Subscribe to a public or shared calendar |
+| `unsubscribe_calendar` | Remove a calendar from your list |
+| `update_calendar_list_entry` | Update display settings (name override, color, visibility) |
 | `list_events` | List events in a time range |
 | `get_event` | Get event details |
 | `create_event` | Create a new event |
@@ -448,6 +455,10 @@ save_attachment_to_drive(
 | `query_free_busy` | Check availability for users/calendars in a time range |
 | `share_calendar` | Share a calendar (user, group, domain, or public) |
 | `list_calendar_sharing` | List sharing rules (ACL) for a calendar |
+| `get_acl_rule` | Get details of a specific sharing rule |
+| `update_acl_rule` | Update the role of a sharing rule |
+| `delete_acl_rule` | Delete a sharing rule (revoke access) |
+| `get_colors` | Get available color palette for calendars and events |
 
 ### Local File Tools (conditional)
 
