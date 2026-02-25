@@ -194,7 +194,9 @@ func newDriveCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "drive",
 		Short: "Start the Google Drive MCP server (stdio)",
-		Long:  "Starts an MCP server over stdio with Drive tools: drive_search, drive_list, drive_get, drive_read, accounts_list.",
+		Long: `Starts an MCP server over stdio with Drive tools:
+  accounts_list, drive_search, drive_list, drive_get, drive_read, drive_upload,
+  drive_update, drive_delete, drive_create_folder, drive_move, drive_copy, drive_share.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			mgr, err := newManager()
 			if err != nil {

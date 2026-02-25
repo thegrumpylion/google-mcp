@@ -517,6 +517,8 @@ func TestDrive_ToolsList(t *testing.T) {
 
 	expectedTools := []string{
 		"accounts_list", "drive_search", "drive_list", "drive_get", "drive_read",
+		"drive_upload", "drive_update", "drive_delete", "drive_create_folder",
+		"drive_move", "drive_copy", "drive_share",
 	}
 
 	if len(tools.Tools) != len(expectedTools) {

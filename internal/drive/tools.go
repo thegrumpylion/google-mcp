@@ -2,7 +2,9 @@
 package drive
 
 import (
+	"bytes"
 	"context"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"strings"
@@ -14,7 +16,7 @@ import (
 
 // Scopes required by the Drive tools.
 var Scopes = []string{
-	drive.DriveReadonlyScope,
+	drive.DriveScope,
 }
 
 // RegisterTools registers all Drive MCP tools on the given server.
@@ -24,6 +26,13 @@ func RegisterTools(server *mcp.Server, mgr *auth.Manager) {
 	registerList(server, mgr)
 	registerGet(server, mgr)
 	registerRead(server, mgr)
+	registerUpload(server, mgr)
+	registerUpdate(server, mgr)
+	registerDelete(server, mgr)
+	registerCreateFolder(server, mgr)
+	registerMove(server, mgr)
+	registerCopy(server, mgr)
+	registerShare(server, mgr)
 }
 
 func newService(ctx context.Context, mgr *auth.Manager, account string) (*drive.Service, error) {
@@ -377,6 +386,422 @@ func registerRead(server *mcp.Server, mgr *auth.Manager) {
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{
 				&mcp.TextContent{Text: fmt.Sprintf("File: %s (%s)\n\n%s%s", file.Name, file.MimeType, text, suffix)},
+			},
+		}, nil, nil
+	})
+}
+
+// --- drive_upload ---
+
+type uploadInput struct {
+	Account  string `json:"account" jsonschema:"Account name to use"`
+	Name     string `json:"name" jsonschema:"File name (e.g. 'report.txt')"`
+	Content  string `json:"content" jsonschema:"File content as text, or base64-encoded binary data"`
+	MIMEType string `json:"mime_type,omitempty" jsonschema:"MIME type of the file (e.g. 'text/plain', 'application/pdf'). Auto-detected if omitted."`
+	FolderID string `json:"folder_id,omitempty" jsonschema:"Parent folder ID to upload into (default: root)"`
+	Base64   bool   `json:"base64,omitempty" jsonschema:"Set to true if content is base64-encoded binary data"`
+}
+
+func registerUpload(server *mcp.Server, mgr *auth.Manager) {
+	mcp.AddTool(server, &mcp.Tool{
+		Name: "drive_upload",
+		Description: `Upload a new file to Google Drive. Provide content as plain text or base64-encoded binary.
+
+For text files, just pass the content directly. For binary files, base64-encode the content and set base64=true.`,
+	}, func(ctx context.Context, req *mcp.CallToolRequest, input uploadInput) (*mcp.CallToolResult, any, error) {
+		svc, err := newService(ctx, mgr, input.Account)
+		if err != nil {
+			return nil, nil, fmt.Errorf("creating Drive service: %w", err)
+		}
+
+		file := &drive.File{Name: input.Name}
+		if input.MIMEType != "" {
+			file.MimeType = input.MIMEType
+		}
+		if input.FolderID != "" {
+			file.Parents = []string{input.FolderID}
+		}
+
+		var reader io.Reader
+		if input.Base64 {
+			data, err := base64.StdEncoding.DecodeString(input.Content)
+			if err != nil {
+				return nil, nil, fmt.Errorf("decoding base64 content: %w", err)
+			}
+			reader = bytes.NewReader(data)
+		} else {
+			reader = strings.NewReader(input.Content)
+		}
+
+		created, err := svc.Files.Create(file).Media(reader).
+			Fields("id,name,mimeType,size,webViewLink").Do()
+		if err != nil {
+			return nil, nil, fmt.Errorf("uploading file: %w", err)
+		}
+
+		var sb strings.Builder
+		fmt.Fprintf(&sb, "File uploaded successfully!\n\n")
+		fmt.Fprintf(&sb, "Name: %s\n", created.Name)
+		fmt.Fprintf(&sb, "ID: %s\n", created.Id)
+		fmt.Fprintf(&sb, "MIME Type: %s\n", created.MimeType)
+		if created.Size > 0 {
+			fmt.Fprintf(&sb, "Size: %d bytes\n", created.Size)
+		}
+		if created.WebViewLink != "" {
+			fmt.Fprintf(&sb, "Link: %s\n", created.WebViewLink)
+		}
+
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{
+				&mcp.TextContent{Text: sb.String()},
+			},
+		}, nil, nil
+	})
+}
+
+// --- drive_update ---
+
+type updateInput struct {
+	Account     string `json:"account" jsonschema:"Account name to use"`
+	FileID      string `json:"file_id" jsonschema:"Google Drive file ID to update"`
+	Name        string `json:"name,omitempty" jsonschema:"New file name (leave empty to keep current)"`
+	Description string `json:"description,omitempty" jsonschema:"New file description (leave empty to keep current)"`
+	MIMEType    string `json:"mime_type,omitempty" jsonschema:"New MIME type (leave empty to keep current)"`
+}
+
+func registerUpdate(server *mcp.Server, mgr *auth.Manager) {
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "drive_update",
+		Description: "Update file metadata on Google Drive (rename, change description, change MIME type). Only specified fields are changed.",
+	}, func(ctx context.Context, req *mcp.CallToolRequest, input updateInput) (*mcp.CallToolResult, any, error) {
+		svc, err := newService(ctx, mgr, input.Account)
+		if err != nil {
+			return nil, nil, fmt.Errorf("creating Drive service: %w", err)
+		}
+
+		file := &drive.File{}
+		if input.Name != "" {
+			file.Name = input.Name
+		}
+		if input.Description != "" {
+			file.Description = input.Description
+		}
+		if input.MIMEType != "" {
+			file.MimeType = input.MIMEType
+		}
+
+		updated, err := svc.Files.Update(input.FileID, file).
+			Fields("id,name,mimeType,size,description,modifiedTime,webViewLink").Do()
+		if err != nil {
+			return nil, nil, fmt.Errorf("updating file: %w", err)
+		}
+
+		var sb strings.Builder
+		fmt.Fprintf(&sb, "File updated successfully!\n\n")
+		fmt.Fprintf(&sb, "Name: %s\n", updated.Name)
+		fmt.Fprintf(&sb, "ID: %s\n", updated.Id)
+		fmt.Fprintf(&sb, "MIME Type: %s\n", updated.MimeType)
+		if updated.Description != "" {
+			fmt.Fprintf(&sb, "Description: %s\n", updated.Description)
+		}
+		if updated.WebViewLink != "" {
+			fmt.Fprintf(&sb, "Link: %s\n", updated.WebViewLink)
+		}
+
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{
+				&mcp.TextContent{Text: sb.String()},
+			},
+		}, nil, nil
+	})
+}
+
+// --- drive_delete ---
+
+type deleteInput struct {
+	Account     string `json:"account" jsonschema:"Account name to use"`
+	FileID      string `json:"file_id" jsonschema:"Google Drive file ID to delete"`
+	Permanently bool   `json:"permanently,omitempty" jsonschema:"If true, permanently delete instead of moving to trash (default: false, moves to trash)"`
+}
+
+func registerDelete(server *mcp.Server, mgr *auth.Manager) {
+	mcp.AddTool(server, &mcp.Tool{
+		Name: "drive_delete",
+		Description: `Delete a file from Google Drive. By default, moves the file to trash.
+
+Set permanently=true to permanently delete the file (cannot be undone).`,
+	}, func(ctx context.Context, req *mcp.CallToolRequest, input deleteInput) (*mcp.CallToolResult, any, error) {
+		svc, err := newService(ctx, mgr, input.Account)
+		if err != nil {
+			return nil, nil, fmt.Errorf("creating Drive service: %w", err)
+		}
+
+		if input.Permanently {
+			if err := svc.Files.Delete(input.FileID).Do(); err != nil {
+				return nil, nil, fmt.Errorf("deleting file: %w", err)
+			}
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: fmt.Sprintf("File %s permanently deleted.", input.FileID)},
+				},
+			}, nil, nil
+		}
+
+		// Move to trash by updating the trashed property.
+		_, err = svc.Files.Update(input.FileID, &drive.File{
+			Trashed:         true,
+			ForceSendFields: []string{"Trashed"},
+		}).Do()
+		if err != nil {
+			return nil, nil, fmt.Errorf("trashing file: %w", err)
+		}
+
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{
+				&mcp.TextContent{Text: fmt.Sprintf("File %s moved to trash.", input.FileID)},
+			},
+		}, nil, nil
+	})
+}
+
+// --- drive_create_folder ---
+
+type createFolderInput struct {
+	Account  string `json:"account" jsonschema:"Account name to use"`
+	Name     string `json:"name" jsonschema:"Folder name"`
+	ParentID string `json:"parent_id,omitempty" jsonschema:"Parent folder ID (default: root)"`
+}
+
+func registerCreateFolder(server *mcp.Server, mgr *auth.Manager) {
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "drive_create_folder",
+		Description: "Create a new folder in Google Drive, optionally inside an existing folder.",
+	}, func(ctx context.Context, req *mcp.CallToolRequest, input createFolderInput) (*mcp.CallToolResult, any, error) {
+		svc, err := newService(ctx, mgr, input.Account)
+		if err != nil {
+			return nil, nil, fmt.Errorf("creating Drive service: %w", err)
+		}
+
+		folder := &drive.File{
+			Name:     input.Name,
+			MimeType: "application/vnd.google-apps.folder",
+		}
+		if input.ParentID != "" {
+			folder.Parents = []string{input.ParentID}
+		}
+
+		created, err := svc.Files.Create(folder).Fields("id,name,webViewLink").Do()
+		if err != nil {
+			return nil, nil, fmt.Errorf("creating folder: %w", err)
+		}
+
+		var sb strings.Builder
+		fmt.Fprintf(&sb, "Folder created successfully!\n\n")
+		fmt.Fprintf(&sb, "Name: %s\n", created.Name)
+		fmt.Fprintf(&sb, "ID: %s\n", created.Id)
+		if created.WebViewLink != "" {
+			fmt.Fprintf(&sb, "Link: %s\n", created.WebViewLink)
+		}
+
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{
+				&mcp.TextContent{Text: sb.String()},
+			},
+		}, nil, nil
+	})
+}
+
+// --- drive_move ---
+
+type moveInput struct {
+	Account      string `json:"account" jsonschema:"Account name to use"`
+	FileID       string `json:"file_id" jsonschema:"Google Drive file ID to move"`
+	DestFolderID string `json:"dest_folder_id" jsonschema:"Destination folder ID"`
+}
+
+func registerMove(server *mcp.Server, mgr *auth.Manager) {
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "drive_move",
+		Description: "Move a file to a different folder in Google Drive.",
+	}, func(ctx context.Context, req *mcp.CallToolRequest, input moveInput) (*mcp.CallToolResult, any, error) {
+		svc, err := newService(ctx, mgr, input.Account)
+		if err != nil {
+			return nil, nil, fmt.Errorf("creating Drive service: %w", err)
+		}
+
+		// Get current parents to remove them.
+		file, err := svc.Files.Get(input.FileID).Fields("parents").Do()
+		if err != nil {
+			return nil, nil, fmt.Errorf("getting file parents: %w", err)
+		}
+
+		previousParents := strings.Join(file.Parents, ",")
+
+		updated, err := svc.Files.Update(input.FileID, &drive.File{}).
+			AddParents(input.DestFolderID).
+			RemoveParents(previousParents).
+			Fields("id,name,parents,webViewLink").Do()
+		if err != nil {
+			return nil, nil, fmt.Errorf("moving file: %w", err)
+		}
+
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{
+				&mcp.TextContent{Text: fmt.Sprintf("File moved successfully!\n\nName: %s\nID: %s\nNew parent: %s\nLink: %s",
+					updated.Name, updated.Id, input.DestFolderID, updated.WebViewLink)},
+			},
+		}, nil, nil
+	})
+}
+
+// --- drive_copy ---
+
+type copyInput struct {
+	Account  string `json:"account" jsonschema:"Account name to use"`
+	FileID   string `json:"file_id" jsonschema:"Google Drive file ID to copy"`
+	Name     string `json:"name,omitempty" jsonschema:"Name for the copy (default: 'Copy of <original>')"`
+	FolderID string `json:"folder_id,omitempty" jsonschema:"Destination folder ID for the copy (default: same folder)"`
+}
+
+func registerCopy(server *mcp.Server, mgr *auth.Manager) {
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "drive_copy",
+		Description: "Create a copy of a file in Google Drive, optionally with a new name or in a different folder.",
+	}, func(ctx context.Context, req *mcp.CallToolRequest, input copyInput) (*mcp.CallToolResult, any, error) {
+		svc, err := newService(ctx, mgr, input.Account)
+		if err != nil {
+			return nil, nil, fmt.Errorf("creating Drive service: %w", err)
+		}
+
+		copyFile := &drive.File{}
+		if input.Name != "" {
+			copyFile.Name = input.Name
+		}
+		if input.FolderID != "" {
+			copyFile.Parents = []string{input.FolderID}
+		}
+
+		copied, err := svc.Files.Copy(input.FileID, copyFile).
+			Fields("id,name,mimeType,size,webViewLink").Do()
+		if err != nil {
+			return nil, nil, fmt.Errorf("copying file: %w", err)
+		}
+
+		var sb strings.Builder
+		fmt.Fprintf(&sb, "File copied successfully!\n\n")
+		fmt.Fprintf(&sb, "Name: %s\n", copied.Name)
+		fmt.Fprintf(&sb, "ID: %s\n", copied.Id)
+		fmt.Fprintf(&sb, "MIME Type: %s\n", copied.MimeType)
+		if copied.Size > 0 {
+			fmt.Fprintf(&sb, "Size: %d bytes\n", copied.Size)
+		}
+		if copied.WebViewLink != "" {
+			fmt.Fprintf(&sb, "Link: %s\n", copied.WebViewLink)
+		}
+
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{
+				&mcp.TextContent{Text: sb.String()},
+			},
+		}, nil, nil
+	})
+}
+
+// --- drive_share ---
+
+type shareInput struct {
+	Account      string `json:"account" jsonschema:"Account name to use"`
+	FileID       string `json:"file_id" jsonschema:"Google Drive file ID to share"`
+	EmailAddress string `json:"email_address,omitempty" jsonschema:"Email address to share with (required for 'user' and 'group' types)"`
+	Role         string `json:"role" jsonschema:"Permission role: 'reader', 'commenter', 'writer', or 'organizer'"`
+	Type         string `json:"type" jsonschema:"Permission type: 'user', 'group', 'domain', or 'anyone'"`
+	Domain       string `json:"domain,omitempty" jsonschema:"Domain to share with (required for 'domain' type)"`
+	SendEmail    bool   `json:"send_email,omitempty" jsonschema:"Send a notification email to the user (default: false)"`
+	Message      string `json:"message,omitempty" jsonschema:"Custom message to include in the notification email"`
+}
+
+func registerShare(server *mcp.Server, mgr *auth.Manager) {
+	mcp.AddTool(server, &mcp.Tool{
+		Name: "drive_share",
+		Description: `Share a Google Drive file by adding permissions.
+
+Types:
+  - "user" — Share with a specific user (requires email_address)
+  - "group" — Share with a Google Group (requires email_address)
+  - "domain" — Share with an entire domain (requires domain)
+  - "anyone" — Share with anyone who has the link
+
+Roles:
+  - "reader" — View only
+  - "commenter" — View and comment
+  - "writer" — Edit
+  - "organizer" — Manage (shared drives only)`,
+	}, func(ctx context.Context, req *mcp.CallToolRequest, input shareInput) (*mcp.CallToolResult, any, error) {
+		// Validate inputs.
+		switch input.Type {
+		case "user", "group":
+			if input.EmailAddress == "" {
+				return nil, nil, fmt.Errorf("email_address is required for type %q", input.Type)
+			}
+		case "domain":
+			if input.Domain == "" {
+				return nil, nil, fmt.Errorf("domain is required for type 'domain'")
+			}
+		case "anyone":
+		default:
+			return nil, nil, fmt.Errorf("invalid type %q: must be 'user', 'group', 'domain', or 'anyone'", input.Type)
+		}
+
+		switch input.Role {
+		case "reader", "commenter", "writer", "organizer":
+		default:
+			return nil, nil, fmt.Errorf("invalid role %q: must be 'reader', 'commenter', 'writer', or 'organizer'", input.Role)
+		}
+
+		svc, err := newService(ctx, mgr, input.Account)
+		if err != nil {
+			return nil, nil, fmt.Errorf("creating Drive service: %w", err)
+		}
+
+		perm := &drive.Permission{
+			Role:         input.Role,
+			Type:         input.Type,
+			EmailAddress: input.EmailAddress,
+			Domain:       input.Domain,
+		}
+
+		call := svc.Permissions.Create(input.FileID, perm).
+			Fields("id,role,type,emailAddress,domain")
+
+		if input.SendEmail {
+			call = call.SendNotificationEmail(true)
+			if input.Message != "" {
+				call = call.EmailMessage(input.Message)
+			}
+		} else {
+			call = call.SendNotificationEmail(false)
+		}
+
+		created, err := call.Do()
+		if err != nil {
+			return nil, nil, fmt.Errorf("sharing file: %w", err)
+		}
+
+		var sb strings.Builder
+		fmt.Fprintf(&sb, "File shared successfully!\n\n")
+		fmt.Fprintf(&sb, "Permission ID: %s\n", created.Id)
+		fmt.Fprintf(&sb, "Role: %s\n", created.Role)
+		fmt.Fprintf(&sb, "Type: %s\n", created.Type)
+		if created.EmailAddress != "" {
+			fmt.Fprintf(&sb, "Shared with: %s\n", created.EmailAddress)
+		}
+		if created.Domain != "" {
+			fmt.Fprintf(&sb, "Domain: %s\n", created.Domain)
+		}
+
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{
+				&mcp.TextContent{Text: sb.String()},
 			},
 		}, nil, nil
 	})
