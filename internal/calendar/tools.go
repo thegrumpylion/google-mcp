@@ -73,7 +73,7 @@ func registerAccountsList(server *mcp.Server, mgr *auth.Manager) {
 // --- calendar_list_calendars ---
 
 type listCalendarsInput struct {
-	Account string `json:"account" jsonschema:"required,description=Account name (e.g. 'personal'\\, 'work') or 'all' to list from all accounts"`
+	Account string `json:"account" jsonschema:"Account name (e.g. 'personal', 'work') or 'all' to list from all accounts"`
 }
 
 func registerListCalendars(server *mcp.Server, mgr *auth.Manager) {
@@ -139,12 +139,12 @@ func registerListCalendars(server *mcp.Server, mgr *auth.Manager) {
 // --- calendar_list_events ---
 
 type listEventsInput struct {
-	Account    string `json:"account" jsonschema:"required,description=Account name (e.g. 'personal'\\, 'work') or 'all' to list from all accounts"`
-	CalendarID string `json:"calendar_id,omitempty" jsonschema:"description=Calendar ID (default: 'primary')"`
-	TimeMin    string `json:"time_min,omitempty" jsonschema:"description=Start of time range in RFC3339 format (e.g. '2024-01-15T00:00:00Z'). Default: now"`
-	TimeMax    string `json:"time_max,omitempty" jsonschema:"description=End of time range in RFC3339 format. Default: 7 days from now"`
-	Query      string `json:"query,omitempty" jsonschema:"description=Free text search query"`
-	MaxResults int64  `json:"max_results,omitempty" jsonschema:"description=Maximum number of events per account (default 20\\, max 100)"`
+	Account    string `json:"account" jsonschema:"Account name (e.g. 'personal', 'work') or 'all' to list from all accounts"`
+	CalendarID string `json:"calendar_id,omitempty" jsonschema:"Calendar ID (default: 'primary')"`
+	TimeMin    string `json:"time_min,omitempty" jsonschema:"Start of time range in RFC3339 format (e.g. '2024-01-15T00:00:00Z'). Default: now"`
+	TimeMax    string `json:"time_max,omitempty" jsonschema:"End of time range in RFC3339 format. Default: 7 days from now"`
+	Query      string `json:"query,omitempty" jsonschema:"Free text search query"`
+	MaxResults int64  `json:"max_results,omitempty" jsonschema:"Maximum number of events per account (default 20, max 100)"`
 }
 
 func registerListEvents(server *mcp.Server, mgr *auth.Manager) {
@@ -248,9 +248,9 @@ func registerListEvents(server *mcp.Server, mgr *auth.Manager) {
 // --- calendar_get_event ---
 
 type getEventInput struct {
-	Account    string `json:"account" jsonschema:"required,description=Account name to use"`
-	CalendarID string `json:"calendar_id,omitempty" jsonschema:"description=Calendar ID (default: 'primary')"`
-	EventID    string `json:"event_id" jsonschema:"required,description=Event ID to retrieve"`
+	Account    string `json:"account" jsonschema:"Account name to use"`
+	CalendarID string `json:"calendar_id,omitempty" jsonschema:"Calendar ID (default: 'primary')"`
+	EventID    string `json:"event_id" jsonschema:"Event ID to retrieve"`
 }
 
 func registerGetEvent(server *mcp.Server, mgr *auth.Manager) {
@@ -287,15 +287,15 @@ func registerGetEvent(server *mcp.Server, mgr *auth.Manager) {
 // --- calendar_create_event ---
 
 type createEventInput struct {
-	Account     string   `json:"account" jsonschema:"required,description=Account name to use"`
-	CalendarID  string   `json:"calendar_id,omitempty" jsonschema:"description=Calendar ID (default: 'primary')"`
-	Summary     string   `json:"summary" jsonschema:"required,description=Event title"`
-	Description string   `json:"description,omitempty" jsonschema:"description=Event description"`
-	Location    string   `json:"location,omitempty" jsonschema:"description=Event location"`
-	StartTime   string   `json:"start_time" jsonschema:"required,description=Event start time in RFC3339 format (e.g. '2024-01-15T09:00:00-05:00') or date for all-day events (e.g. '2024-01-15')"`
-	EndTime     string   `json:"end_time" jsonschema:"required,description=Event end time in RFC3339 format or date for all-day events"`
-	TimeZone    string   `json:"time_zone,omitempty" jsonschema:"description=IANA timezone (e.g. 'America/New_York'). Defaults to account calendar timezone."`
-	Attendees   []string `json:"attendees,omitempty" jsonschema:"description=Email addresses of attendees"`
+	Account     string   `json:"account" jsonschema:"Account name to use"`
+	CalendarID  string   `json:"calendar_id,omitempty" jsonschema:"Calendar ID (default: 'primary')"`
+	Summary     string   `json:"summary" jsonschema:"Event title"`
+	Description string   `json:"description,omitempty" jsonschema:"Event description"`
+	Location    string   `json:"location,omitempty" jsonschema:"Event location"`
+	StartTime   string   `json:"start_time" jsonschema:"Event start time in RFC3339 format (e.g. '2024-01-15T09:00:00-05:00') or date for all-day events (e.g. '2024-01-15')"`
+	EndTime     string   `json:"end_time" jsonschema:"Event end time in RFC3339 format or date for all-day events"`
+	TimeZone    string   `json:"time_zone,omitempty" jsonschema:"IANA timezone (e.g. 'America/New_York'). Defaults to account calendar timezone."`
+	Attendees   []string `json:"attendees,omitempty" jsonschema:"Email addresses of attendees"`
 }
 
 func registerCreateEvent(server *mcp.Server, mgr *auth.Manager) {

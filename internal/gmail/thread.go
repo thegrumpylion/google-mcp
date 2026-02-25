@@ -12,8 +12,8 @@ import (
 // --- gmail_read_thread ---
 
 type readThreadInput struct {
-	Account  string `json:"account" jsonschema:"required,description=Account name to use"`
-	ThreadID string `json:"thread_id" jsonschema:"required,description=Gmail thread ID (from gmail_search or gmail_read results)"`
+	Account  string `json:"account" jsonschema:"Account name to use"`
+	ThreadID string `json:"thread_id" jsonschema:"Gmail thread ID (from gmail_search or gmail_read results)"`
 }
 
 func registerReadThread(server *mcp.Server, mgr *auth.Manager) {

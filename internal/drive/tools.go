@@ -72,9 +72,9 @@ func registerAccountsList(server *mcp.Server, mgr *auth.Manager) {
 // --- drive_search ---
 
 type searchInput struct {
-	Account    string `json:"account" jsonschema:"required,description=Account name (e.g. 'personal'\\, 'work') or 'all' to search all accounts"`
-	Query      string `json:"query" jsonschema:"required,description=Drive search query (e.g. \"name contains 'report'\" or \"mimeType = 'application/pdf'\")"`
-	MaxResults int64  `json:"max_results,omitempty" jsonschema:"description=Maximum number of results per account (default 10\\, max 50)"`
+	Account    string `json:"account" jsonschema:"Account name (e.g. 'personal', 'work') or 'all' to search all accounts"`
+	Query      string `json:"query" jsonschema:"Drive search query (e.g. \"name contains 'report'\" or \"mimeType = 'application/pdf'\")"`
+	MaxResults int64  `json:"max_results,omitempty" jsonschema:"Maximum number of results per account (default 10, max 50)"`
 }
 
 func registerSearch(server *mcp.Server, mgr *auth.Manager) {
@@ -152,10 +152,10 @@ func registerSearch(server *mcp.Server, mgr *auth.Manager) {
 // --- drive_list ---
 
 type listInput struct {
-	Account    string `json:"account" jsonschema:"required,description=Account name (e.g. 'personal'\\, 'work') or 'all' to list from all accounts"`
-	FolderID   string `json:"folder_id,omitempty" jsonschema:"description=Folder ID to list contents of (default: root)"`
-	MaxResults int64  `json:"max_results,omitempty" jsonschema:"description=Maximum number of results per account (default 20\\, max 100)"`
-	OrderBy    string `json:"order_by,omitempty" jsonschema:"description=Sort order (e.g. 'modifiedTime desc'\\, 'name'). Default: 'modifiedTime desc'"`
+	Account    string `json:"account" jsonschema:"Account name (e.g. 'personal', 'work') or 'all' to list from all accounts"`
+	FolderID   string `json:"folder_id,omitempty" jsonschema:"Folder ID to list contents of (default: root)"`
+	MaxResults int64  `json:"max_results,omitempty" jsonschema:"Maximum number of results per account (default 20, max 100)"`
+	OrderBy    string `json:"order_by,omitempty" jsonschema:"Sort order (e.g. 'modifiedTime desc', 'name'). Default: 'modifiedTime desc'"`
 }
 
 func registerList(server *mcp.Server, mgr *auth.Manager) {
@@ -245,8 +245,8 @@ func registerList(server *mcp.Server, mgr *auth.Manager) {
 // --- drive_get ---
 
 type getInput struct {
-	Account string `json:"account" jsonschema:"required,description=Account name to use"`
-	FileID  string `json:"file_id" jsonschema:"required,description=Google Drive file ID"`
+	Account string `json:"account" jsonschema:"Account name to use"`
+	FileID  string `json:"file_id" jsonschema:"Google Drive file ID"`
 }
 
 func registerGet(server *mcp.Server, mgr *auth.Manager) {
@@ -309,9 +309,9 @@ func registerGet(server *mcp.Server, mgr *auth.Manager) {
 // --- drive_read ---
 
 type readInput struct {
-	Account    string `json:"account" jsonschema:"required,description=Account name to use"`
-	FileID     string `json:"file_id" jsonschema:"required,description=Google Drive file ID"`
-	ExportMIME string `json:"export_mime,omitempty" jsonschema:"description=MIME type to export Google Docs/Sheets/Slides as (e.g. 'text/plain'\\, 'text/csv'\\, 'application/pdf'). Required for Google Workspace files."`
+	Account    string `json:"account" jsonschema:"Account name to use"`
+	FileID     string `json:"file_id" jsonschema:"Google Drive file ID"`
+	ExportMIME string `json:"export_mime,omitempty" jsonschema:"MIME type to export Google Docs/Sheets/Slides as (e.g. 'text/plain', 'text/csv', 'application/pdf'). Required for Google Workspace files."`
 }
 
 func registerRead(server *mcp.Server, mgr *auth.Manager) {

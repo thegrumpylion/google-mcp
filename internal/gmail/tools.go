@@ -81,9 +81,9 @@ func registerAccountsList(server *mcp.Server, mgr *auth.Manager) {
 // --- gmail_search ---
 
 type searchInput struct {
-	Account    string `json:"account" jsonschema:"required,description=Account name (e.g. 'personal'\\, 'work') or 'all' to search all accounts"`
-	Query      string `json:"query" jsonschema:"required,description=Gmail search query (same syntax as Gmail search bar)"`
-	MaxResults int64  `json:"max_results,omitempty" jsonschema:"description=Maximum number of results per account (default 10\\, max 50)"`
+	Account    string `json:"account" jsonschema:"Account name (e.g. 'personal', 'work') or 'all' to search all accounts"`
+	Query      string `json:"query" jsonschema:"Gmail search query (same syntax as Gmail search bar)"`
+	MaxResults int64  `json:"max_results,omitempty" jsonschema:"Maximum number of results per account (default 10, max 50)"`
 }
 
 func registerSearch(server *mcp.Server, mgr *auth.Manager) {
@@ -168,8 +168,8 @@ func registerSearch(server *mcp.Server, mgr *auth.Manager) {
 // --- gmail_read ---
 
 type readInput struct {
-	Account   string `json:"account" jsonschema:"required,description=Account name to use"`
-	MessageID string `json:"message_id" jsonschema:"required,description=Gmail message ID (from gmail_search results)"`
+	Account   string `json:"account" jsonschema:"Account name to use"`
+	MessageID string `json:"message_id" jsonschema:"Gmail message ID (from gmail_search results)"`
 }
 
 func registerRead(server *mcp.Server, mgr *auth.Manager) {
@@ -281,13 +281,13 @@ func extractBody(part *gmail.MessagePart) string {
 // --- gmail_send ---
 
 type sendInput struct {
-	Account string `json:"account" jsonschema:"required,description=Account name to send from"`
-	To      string `json:"to" jsonschema:"required,description=Recipient email address"`
-	Subject string `json:"subject" jsonschema:"required,description=Email subject line"`
-	Body    string `json:"body" jsonschema:"required,description=Email body (plain text)"`
-	Cc      string `json:"cc,omitempty" jsonschema:"description=CC recipients (comma-separated email addresses)"`
-	Bcc     string `json:"bcc,omitempty" jsonschema:"description=BCC recipients (comma-separated email addresses)"`
-	ReplyTo string `json:"reply_to,omitempty" jsonschema:"description=Message ID to reply to (sets In-Reply-To and References headers)"`
+	Account string `json:"account" jsonschema:"Account name to send from"`
+	To      string `json:"to" jsonschema:"Recipient email address"`
+	Subject string `json:"subject" jsonschema:"Email subject line"`
+	Body    string `json:"body" jsonschema:"Email body (plain text)"`
+	Cc      string `json:"cc,omitempty" jsonschema:"CC recipients (comma-separated email addresses)"`
+	Bcc     string `json:"bcc,omitempty" jsonschema:"BCC recipients (comma-separated email addresses)"`
+	ReplyTo string `json:"reply_to,omitempty" jsonschema:"Message ID to reply to (sets In-Reply-To and References headers)"`
 }
 
 func registerSend(server *mcp.Server, mgr *auth.Manager) {
@@ -358,7 +358,7 @@ func mime2047Encode(s string) string {
 // --- gmail_list_labels ---
 
 type listLabelsInput struct {
-	Account string `json:"account" jsonschema:"required,description=Account name (e.g. 'personal'\\, 'work') or 'all' to list labels from all accounts"`
+	Account string `json:"account" jsonschema:"Account name (e.g. 'personal', 'work') or 'all' to list labels from all accounts"`
 }
 
 func registerListLabels(server *mcp.Server, mgr *auth.Manager) {

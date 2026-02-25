@@ -13,10 +13,10 @@ import (
 // --- gmail_modify ---
 
 type modifyInput struct {
-	Account      string   `json:"account" jsonschema:"required,description=Account name to use"`
-	MessageID    string   `json:"message_id" jsonschema:"required,description=Gmail message ID to modify"`
-	AddLabels    []string `json:"add_labels,omitempty" jsonschema:"description=Label IDs to add (e.g. 'STARRED'\\, 'IMPORTANT'\\, 'TRASH'\\, or custom label IDs from gmail_list_labels)"`
-	RemoveLabels []string `json:"remove_labels,omitempty" jsonschema:"description=Label IDs to remove (e.g. 'UNREAD'\\, 'INBOX'\\, 'STARRED')"`
+	Account      string   `json:"account" jsonschema:"Account name to use"`
+	MessageID    string   `json:"message_id" jsonschema:"Gmail message ID to modify"`
+	AddLabels    []string `json:"add_labels,omitempty" jsonschema:"Label IDs to add (e.g. 'STARRED', 'IMPORTANT', 'TRASH', or custom label IDs from gmail_list_labels)"`
+	RemoveLabels []string `json:"remove_labels,omitempty" jsonschema:"Label IDs to remove (e.g. 'UNREAD', 'INBOX', 'STARRED')"`
 }
 
 // Common label operations as a reference:

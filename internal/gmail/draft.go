@@ -14,13 +14,13 @@ import (
 // --- gmail_draft_create ---
 
 type draftCreateInput struct {
-	Account string `json:"account" jsonschema:"required,description=Account name to use"`
-	To      string `json:"to" jsonschema:"required,description=Recipient email address"`
-	Subject string `json:"subject" jsonschema:"required,description=Email subject line"`
-	Body    string `json:"body" jsonschema:"required,description=Email body (plain text)"`
-	Cc      string `json:"cc,omitempty" jsonschema:"description=CC recipients (comma-separated email addresses)"`
-	Bcc     string `json:"bcc,omitempty" jsonschema:"description=BCC recipients (comma-separated email addresses)"`
-	ReplyTo string `json:"reply_to,omitempty" jsonschema:"description=Message ID to reply to (sets In-Reply-To and References headers)"`
+	Account string `json:"account" jsonschema:"Account name to use"`
+	To      string `json:"to" jsonschema:"Recipient email address"`
+	Subject string `json:"subject" jsonschema:"Email subject line"`
+	Body    string `json:"body" jsonschema:"Email body (plain text)"`
+	Cc      string `json:"cc,omitempty" jsonschema:"CC recipients (comma-separated email addresses)"`
+	Bcc     string `json:"bcc,omitempty" jsonschema:"BCC recipients (comma-separated email addresses)"`
+	ReplyTo string `json:"reply_to,omitempty" jsonschema:"Message ID to reply to (sets In-Reply-To and References headers)"`
 }
 
 func registerDraftCreate(server *mcp.Server, mgr *auth.Manager) {
@@ -89,8 +89,8 @@ func registerDraftCreate(server *mcp.Server, mgr *auth.Manager) {
 // --- gmail_draft_list ---
 
 type draftListInput struct {
-	Account    string `json:"account" jsonschema:"required,description=Account name (e.g. 'personal'\\, 'work') or 'all' to list drafts from all accounts"`
-	MaxResults int64  `json:"max_results,omitempty" jsonschema:"description=Maximum number of drafts per account (default 20\\, max 100)"`
+	Account    string `json:"account" jsonschema:"Account name (e.g. 'personal', 'work') or 'all' to list drafts from all accounts"`
+	MaxResults int64  `json:"max_results,omitempty" jsonschema:"Maximum number of drafts per account (default 20, max 100)"`
 }
 
 func registerDraftList(server *mcp.Server, mgr *auth.Manager) {
@@ -189,8 +189,8 @@ func registerDraftList(server *mcp.Server, mgr *auth.Manager) {
 // --- gmail_draft_send ---
 
 type draftSendInput struct {
-	Account string `json:"account" jsonschema:"required,description=Account name to use"`
-	DraftID string `json:"draft_id" jsonschema:"required,description=Draft ID to send (from gmail_draft_list or gmail_draft_create)"`
+	Account string `json:"account" jsonschema:"Account name to use"`
+	DraftID string `json:"draft_id" jsonschema:"Draft ID to send (from gmail_draft_list or gmail_draft_create)"`
 }
 
 func registerDraftSend(server *mcp.Server, mgr *auth.Manager) {
