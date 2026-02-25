@@ -177,7 +177,7 @@ To enable local file attachments and uploads:
   "mcpServers": {
     "gmail": {
       "command": "google-mcp",
-      "args": ["gmail", "--allow-read-dir", "/home/user/documents"]
+      "args": ["gmail", "--allow-read-dir", "/home/user/documents", "--allow-write-dir", "/home/user/downloads"]
     },
     "drive": {
       "command": "google-mcp",
@@ -303,6 +303,22 @@ google-mcp drive --allow-read-dir ~/documents
 upload_file(account="personal", local_path="reports/q4.pdf")
 ```
 
+#### Saving Files to Disk
+
+With `--allow-write-dir`, the `read_file` (Drive) and `get_attachment` (Gmail) tools accept a `save_to` field. When set, the file is written to disk and **content never enters the conversation** — no size limits apply.
+
+```
+# Drive: download a file to disk
+google-mcp drive --allow-write-dir ~/downloads
+
+read_file(account="personal", file_id="...", save_to="report.pdf")
+
+# Gmail: save an attachment to disk
+google-mcp gmail --allow-write-dir ~/downloads
+
+get_attachment(account="work", message_id="...", attachment_id="...", save_to="invoice.pdf")
+```
+
 ### Save Attachment to Drive
 
 The `save_attachment_to_drive` tool transfers a Gmail attachment directly to Google Drive. Like Drive attachments, it supports cross-account transfers — save an attachment from one account's inbox to a different account's Drive.
@@ -339,7 +355,7 @@ save_attachment_to_drive(
 | `delete_label` | Delete a custom label |
 | `modify_messages` | Batch add/remove labels on messages |
 | `delete_message` | Permanently delete a message |
-| `get_attachment` | Download an attachment |
+| `get_attachment` | Download an attachment (or save to local disk with `save_to`) |
 | `get_vacation` | Get vacation/auto-reply settings |
 | `update_vacation` | Update vacation/auto-reply settings |
 | `create_draft` | Create a draft (with attachments) |
@@ -358,7 +374,7 @@ save_attachment_to_drive(
 | `search_files` | Search files using Drive query syntax |
 | `list_files` | List files, optionally in a folder |
 | `get_file` | Get file metadata |
-| `read_file` | Read/download file content |
+| `read_file` | Read/download file content (or save to local disk with `save_to`) |
 | `upload_file` | Upload a new file |
 | `update_file` | Update file metadata (rename, description) |
 | `delete_file` | Delete a file (trash or permanent) |

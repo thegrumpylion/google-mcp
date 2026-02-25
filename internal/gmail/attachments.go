@@ -52,12 +52,17 @@ type getAttachmentInput struct {
 	Account      string `json:"account" jsonschema:"Account name"`
 	MessageID    string `json:"message_id" jsonschema:"Gmail message ID that contains the attachment"`
 	AttachmentID string `json:"attachment_id" jsonschema:"Attachment ID (from read or read_thread results)"`
+	SaveTo       string `json:"save_to,omitempty" jsonschema:"Save to a local file instead of returning content (path relative to an allowed directory). Requires --allow-write-dir. Content never enters the conversation."`
 }
 
 func registerGetAttachment(srv *server.Server, mgr *auth.Manager) {
 	server.AddTool(srv, &mcp.Tool{
-		Name:        "get_attachment",
-		Description: "Download a Gmail message attachment by ID. Returns the attachment data as base64. Use read to discover attachment IDs.",
+		Name: "get_attachment",
+		Description: `Download a Gmail message attachment by ID.
+
+By default, returns content in the conversation (text for text-like files, base64 for binary).
+Set save_to to write the file to a local directory instead — content never enters the conversation.
+Use read_message to discover attachment IDs.`,
 		Annotations: &mcp.ToolAnnotations{
 			ReadOnlyHint: true,
 		},
@@ -72,13 +77,33 @@ func registerGetAttachment(srv *server.Server, mgr *auth.Manager) {
 			return nil, nil, fmt.Errorf("getting attachment: %w", err)
 		}
 
-		// The API returns URL-safe base64. Decode and check if it's text-like.
+		// The API returns URL-safe base64. Decode.
 		data, err := base64.URLEncoding.DecodeString(att.Data)
 		if err != nil {
 			// Fall back to returning raw base64.
 			return &mcp.CallToolResult{
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: fmt.Sprintf("Attachment data (base64, %d bytes encoded):\n%s", att.Size, att.Data)},
+				},
+			}, nil, nil
+		}
+
+		// If save_to is set, write to local filesystem instead of returning content.
+		if input.SaveTo != "" {
+			lfs := srv.LocalFS()
+			if lfs == nil {
+				return nil, nil, fmt.Errorf("local file access is not enabled (use --allow-write-dir)")
+			}
+
+			dir, err := lfs.WriteFile(input.SaveTo, data)
+			if err != nil {
+				return nil, nil, fmt.Errorf("saving attachment: %w", err)
+			}
+
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: fmt.Sprintf("Attachment saved to local disk.\n\nSize: %d bytes\nSaved to: %s/%s",
+						len(data), dir, input.SaveTo)},
 				},
 			}, nil, nil
 		}

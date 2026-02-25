@@ -51,7 +51,7 @@ Last updated: 2026-02-25
 | `get_label` | `Labels.Get` | Read |
 | `create_label` | `Labels.Create` | Mutation |
 | `delete_label` | `Labels.Delete` | Mutation |
-| `get_attachment` | `Messages.Attachments.Get` | Read |
+| `get_attachment` | `Messages.Attachments.Get` (+ optional `save_to` local file) | Read |
 | `get_vacation` | `Settings.GetVacation` | Read |
 | `update_vacation` | `Settings.UpdateVacation` | Mutation |
 | `create_draft` | `Drafts.Create` | Mutation |
@@ -109,7 +109,7 @@ Last updated: 2026-02-25
 | `search_files` | `Files.List` (with Q) | Read |
 | `list_files` | `Files.List` (with folder filter) | Read |
 | `get_file` | `Files.Get` | Read |
-| `read_file` | `Files.Get` (download) + `Files.Export` | Read |
+| `read_file` | `Files.Get` (download) + `Files.Export` (+ optional `save_to` local file) | Read |
 | `upload_file` | `Files.Create` (with media) | Mutation |
 | `update_file` | `Files.Update` (metadata) | Mutation |
 | `delete_file` | `Files.Delete` + `Files.Update` (trash) | Mutation |

@@ -258,12 +258,17 @@ type readInput struct {
 	Account        string `json:"account" jsonschema:"Account name"`
 	FileID         string `json:"file_id" jsonschema:"Google Drive file ID"`
 	ExportMIMEType string `json:"export_mime_type,omitempty" jsonschema:"MIME type to export Google Docs/Sheets/Slides as (e.g. 'text/plain', 'text/csv', 'application/pdf'). Required for Google Workspace files."`
+	SaveTo         string `json:"save_to,omitempty" jsonschema:"Save to a local file instead of returning content (path relative to an allowed directory). Requires --allow-write-dir. Content never enters the conversation."`
 }
 
 func registerRead(srv *server.Server, mgr *auth.Manager) {
 	server.AddTool(srv, &mcp.Tool{
-		Name:        "read_file",
-		Description: "Read/download the content of a Google Drive file. For Google Docs/Sheets/Slides, specify export_mime_type to choose the export format (e.g. 'text/plain'). Returns text content directly for text files, or base64 for binary files. Content is truncated at 512 KB for large files.",
+		Name: "read_file",
+		Description: `Read/download the content of a Google Drive file.
+
+By default, returns content in the conversation (text directly, base64 for binary, truncated at 512 KB).
+Set save_to to write the file to a local directory instead — content never enters the conversation and there is no size limit.
+For Google Docs/Sheets/Slides, specify export_mime_type to choose the export format.`,
 		Annotations: &mcp.ToolAnnotations{
 			ReadOnlyHint: true,
 		},
@@ -300,6 +305,31 @@ func registerRead(srv *server.Server, mgr *auth.Manager) {
 			body = resp.Body
 		}
 		defer body.Close()
+
+		// If save_to is set, write to local filesystem instead of returning content.
+		if input.SaveTo != "" {
+			lfs := srv.LocalFS()
+			if lfs == nil {
+				return nil, nil, fmt.Errorf("local file access is not enabled (use --allow-write-dir)")
+			}
+
+			data, err := io.ReadAll(body)
+			if err != nil {
+				return nil, nil, fmt.Errorf("reading file content: %w", err)
+			}
+
+			dir, err := lfs.WriteFile(input.SaveTo, data)
+			if err != nil {
+				return nil, nil, fmt.Errorf("saving file: %w", err)
+			}
+
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: fmt.Sprintf("File saved to local disk.\n\nName: %s\nMIME Type: %s\nSize: %d bytes\nSaved to: %s/%s",
+						file.Name, file.MimeType, len(data), dir, input.SaveTo)},
+				},
+			}, nil, nil
+		}
 
 		// Read with a size limit to avoid blowing up context.
 		const maxSize = 512 * 1024 // 512 KB
