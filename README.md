@@ -283,7 +283,12 @@ The server fetches the file bytes from Drive in memory, encodes them as a MIME a
 
 Local file access is **opt-in only** and disabled by default. Use `--allow-read-dir` or `--allow-write-dir` to grant the MCP server access to specific directories. Path containment is enforced by `os.Root` (Go 1.25+) at the kernel level — `../` traversal and symlink escapes are blocked by the OS.
 
-When enabled, two convenience tools — `list_local_files` and `read_local_file` — are automatically added so the LLM can browse and read files in allowed directories. The tool description includes the configured paths and access modes.
+- `--allow-read-dir` grants read-only access (for uploading/attaching local files)
+- `--allow-write-dir` grants read-write access (also enables saving files to disk)
+
+When enabled, two convenience tools — `list_local_files` and `read_local_file` — are automatically added so the LLM can browse and read files in allowed directories. All tools that accept local file paths include the configured directory paths and access modes in their descriptions, so the LLM always knows which directories are available.
+
+#### Uploading and Attaching Local Files
 
 ```
 # Gmail: attach local files to emails
@@ -296,14 +301,14 @@ send_message(
   body="See attached.",
   local_attachments=[{path: "reports/q4.pdf"}]
 )
-```
 
-```
 # Drive: upload local files
 google-mcp drive --allow-read-dir ~/documents
 
 upload_file(account="personal", local_path="reports/q4.pdf")
 ```
+
+Local attachments are also supported on `create_draft` and `update_draft`.
 
 #### Saving Files to Disk
 
@@ -319,6 +324,19 @@ read_file(account="personal", file_id="...", save_to="report.pdf")
 google-mcp gmail --allow-write-dir ~/downloads
 
 get_attachment(account="work", message_id="...", attachment_id="...", save_to="invoice.pdf")
+```
+
+#### Browsing Local Files
+
+When any directory is configured, `list_local_files` and `read_local_file` tools appear automatically on all servers:
+
+```
+# List files in the allowed directory
+list_local_files()                     # list root
+list_local_files(path="subdir")        # list subdirectory
+
+# Read a text file (512 KB limit, binary files rejected)
+read_local_file(path="notes.txt")
 ```
 
 ### Save Attachment to Drive
