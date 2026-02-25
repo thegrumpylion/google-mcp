@@ -10,13 +10,15 @@ import (
 	"github.com/thegrumpylion/google-mcp/internal/auth"
 	"github.com/thegrumpylion/google-mcp/internal/server"
 	"google.golang.org/api/calendar/v3"
+	driveapi "google.golang.org/api/drive/v3"
 )
 
 // Scopes required by the Calendar tools.
 // CalendarScope is the full-access scope, required for ACL operations and calendar CRUD.
-// It is a superset of calendar.readonly and calendar.events.
+// DriveScope is required for resolving Drive file metadata when attaching files to events.
 var Scopes = []string{
 	calendar.CalendarScope,
+	driveapi.DriveScope,
 }
 
 // RegisterTools registers all Calendar MCP tools on the given server.
@@ -152,6 +154,23 @@ func formatEventDetailed(event *calendar.Event) string {
 	}
 	if len(event.Recurrence) > 0 {
 		fmt.Fprintf(&sb, "Recurrence: %s\n", strings.Join(event.Recurrence, "; "))
+	}
+	if len(event.Attachments) > 0 {
+		sb.WriteString("Attachments:\n")
+		for _, att := range event.Attachments {
+			title := att.Title
+			if title == "" {
+				title = att.FileUrl
+			}
+			fmt.Fprintf(&sb, "  - %s", title)
+			if att.MimeType != "" {
+				fmt.Fprintf(&sb, " (%s)", att.MimeType)
+			}
+			if att.FileUrl != "" {
+				fmt.Fprintf(&sb, "\n    URL: %s", att.FileUrl)
+			}
+			sb.WriteString("\n")
+		}
 	}
 	if event.ConferenceData != nil && len(event.ConferenceData.EntryPoints) > 0 {
 		sb.WriteString("Conference:\n")

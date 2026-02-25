@@ -10,7 +10,7 @@ Supports multiple Google accounts (e.g. "personal", "work") with a single binary
 
 - **Gmail** — search, read, send (with attachments), drafts, labels, filters, trash/untrash, history, send-as aliases, vacation settings, cross-service Drive integration
 - **Google Drive** — search, list, read, upload, copy, move, share, permissions, shared drives, revisions, change tracking, trash
-- **Google Calendar** — list, create, update, delete events, manage invitations, free/busy queries, calendar CRUD, sharing (ACL), subscriptions, colors
+- **Google Calendar** — list, create, update, delete events, manage invitations, free/busy queries, calendar CRUD, sharing (ACL), subscriptions, colors, Drive file attachments on events
 - **Multi-account** — use `account="all"` to query across all accounts at once
 - **Per-service servers** — run only what you need
 - **Tool filtering** — `--read-only`, `--enable`, `--disable` for granular control
@@ -80,6 +80,7 @@ Enable the APIs for the services you want to use:
 | Gmail    | `https://www.googleapis.com/auth/drive` | Attach Drive files and save attachments to Drive |
 | Drive    | `https://www.googleapis.com/auth/drive` | Full access to Google Drive |
 | Calendar | `https://www.googleapis.com/auth/calendar` | Full access to Google Calendar (events, calendars, sharing) |
+| Calendar | `https://www.googleapis.com/auth/drive` | Resolve Drive file metadata for event attachments |
 
 4. Click **Update** and then **Save**
 
@@ -255,7 +256,7 @@ google-mcp drive --allow-read-dir /home/user/documents
 
 ## Cross-Service Integration
 
-The Gmail server includes built-in Google Drive integration. All data flows server-side — file content never enters the LLM context window.
+The Gmail and Calendar servers include built-in Google Drive integration. All data flows server-side — file content never enters the LLM context window.
 
 ### Email Attachments
 
@@ -353,6 +354,24 @@ save_attachment_to_drive(
 )
 ```
 
+### Calendar Event Attachments
+
+`create_event` and `update_event` support a `drive_attachments` field to attach Google Drive files to calendar events (meeting agendas, decks, notes). Only file metadata is resolved — no file bytes are downloaded.
+
+Like email attachments, these support cross-account references:
+
+```
+create_event(
+  account="work",
+  summary="Quarterly Review",
+  start_time="2024-01-15T14:00:00-05:00",
+  end_time="2024-01-15T15:00:00-05:00",
+  drive_attachments=[{drive_account: "work", file_id: "abc123"}]
+)
+```
+
+When updating events, Drive attachments are appended to any existing attachments.
+
 ## Available Tools
 
 ### Gmail (36 tools)
@@ -444,8 +463,8 @@ save_attachment_to_drive(
 | `update_calendar_list_entry` | Update display settings (name override, color, visibility) |
 | `list_events` | List events in a time range |
 | `get_event` | Get event details |
-| `create_event` | Create a new event |
-| `update_event` | Update an existing event |
+| `create_event` | Create a new event (with optional Drive file attachments) |
+| `update_event` | Update an existing event (with optional Drive file attachments) |
 | `delete_event` | Delete an event |
 | `respond_event` | Respond to an invitation (accept/decline/tentative) |
 | `quick_add_event` | Create event from natural language (e.g. "Lunch tomorrow at noon") |

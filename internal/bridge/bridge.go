@@ -190,6 +190,49 @@ func ReadDriveFile(ctx context.Context, mgr *auth.Manager, params ReadDriveFileP
 	}, nil
 }
 
+// GetDriveFileMetadataParams holds the parameters for GetDriveFileMetadata.
+type GetDriveFileMetadataParams struct {
+	DriveAccount string
+	FileID       string
+}
+
+// GetDriveFileMetadataResult holds the result of GetDriveFileMetadata.
+type GetDriveFileMetadataResult struct {
+	FileID      string
+	FileName    string
+	MIMEType    string
+	WebViewLink string
+}
+
+// GetDriveFileMetadata returns metadata for a Drive file without downloading
+// its content. This is used for Calendar event attachments where only a
+// reference (fileUrl, title, mimeType) is needed, not the actual file bytes.
+func GetDriveFileMetadata(ctx context.Context, mgr *auth.Manager, params GetDriveFileMetadataParams) (*GetDriveFileMetadataResult, error) {
+	if params.DriveAccount == "" {
+		return nil, fmt.Errorf("drive account is required")
+	}
+	if params.FileID == "" {
+		return nil, fmt.Errorf("file_id is required")
+	}
+
+	driveSvc, err := newDriveService(ctx, mgr, params.DriveAccount)
+	if err != nil {
+		return nil, fmt.Errorf("creating Drive service: %w", err)
+	}
+
+	file, err := driveSvc.Files.Get(params.FileID).Fields("id,name,mimeType,webViewLink").Do()
+	if err != nil {
+		return nil, fmt.Errorf("getting file metadata: %w", err)
+	}
+
+	return &GetDriveFileMetadataResult{
+		FileID:      file.Id,
+		FileName:    file.Name,
+		MIMEType:    file.MimeType,
+		WebViewLink: file.WebViewLink,
+	}, nil
+}
+
 // isGoogleWorkspaceFile returns true if the MIME type is a Google Workspace type.
 func isGoogleWorkspaceFile(mimeType string) bool {
 	switch mimeType {

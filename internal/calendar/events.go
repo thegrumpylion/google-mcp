@@ -8,9 +8,48 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/thegrumpylion/google-mcp/internal/auth"
+	"github.com/thegrumpylion/google-mcp/internal/bridge"
 	"github.com/thegrumpylion/google-mcp/internal/server"
 	"google.golang.org/api/calendar/v3"
 )
+
+// calendarDriveAttachment references a Google Drive file to attach to an event.
+// Only metadata (title, mimeType, webViewLink) is resolved — no file bytes are downloaded.
+type calendarDriveAttachment struct {
+	DriveAccount string `json:"drive_account" jsonschema:"Drive account name"`
+	FileID       string `json:"file_id" jsonschema:"Google Drive file ID to attach"`
+}
+
+// resolveDriveAttachmentsForEvent resolves Drive file metadata and returns
+// Calendar EventAttachment objects. No file content is downloaded.
+func resolveDriveAttachmentsForEvent(ctx context.Context, mgr *auth.Manager, attachments []calendarDriveAttachment) ([]*calendar.EventAttachment, error) {
+	if len(attachments) == 0 {
+		return nil, nil
+	}
+	result := make([]*calendar.EventAttachment, 0, len(attachments))
+	for i, da := range attachments {
+		if da.DriveAccount == "" {
+			return nil, fmt.Errorf("drive_attachments[%d]: drive_account is required", i)
+		}
+		if da.FileID == "" {
+			return nil, fmt.Errorf("drive_attachments[%d]: file_id is required", i)
+		}
+		meta, err := bridge.GetDriveFileMetadata(ctx, mgr, bridge.GetDriveFileMetadataParams{
+			DriveAccount: da.DriveAccount,
+			FileID:       da.FileID,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("drive_attachments[%d] (%s): %w", i, da.FileID, err)
+		}
+		result = append(result, &calendar.EventAttachment{
+			FileId:   meta.FileID,
+			FileUrl:  meta.WebViewLink,
+			MimeType: meta.MIMEType,
+			Title:    meta.FileName,
+		})
+	}
+	return result, nil
+}
 
 // --- list_events ---
 
@@ -163,15 +202,16 @@ func registerGetEvent(srv *server.Server, mgr *auth.Manager) {
 // --- create_event ---
 
 type createEventInput struct {
-	Account     string   `json:"account" jsonschema:"Account name"`
-	CalendarID  string   `json:"calendar_id,omitempty" jsonschema:"Calendar ID (default: 'primary')"`
-	Summary     string   `json:"summary" jsonschema:"Event title"`
-	Description string   `json:"description,omitempty" jsonschema:"Event description"`
-	Location    string   `json:"location,omitempty" jsonschema:"Event location"`
-	StartTime   string   `json:"start_time" jsonschema:"Event start time in RFC3339 format (e.g. '2024-01-15T09:00:00-05:00') or date for all-day events (e.g. '2024-01-15')"`
-	EndTime     string   `json:"end_time" jsonschema:"Event end time in RFC3339 format or date for all-day events"`
-	TimeZone    string   `json:"time_zone,omitempty" jsonschema:"IANA timezone (e.g. 'America/New_York'). Defaults to account calendar timezone."`
-	Attendees   []string `json:"attendees,omitempty" jsonschema:"Email addresses of attendees"`
+	Account          string                    `json:"account" jsonschema:"Account name"`
+	CalendarID       string                    `json:"calendar_id,omitempty" jsonschema:"Calendar ID (default: 'primary')"`
+	Summary          string                    `json:"summary" jsonschema:"Event title"`
+	Description      string                    `json:"description,omitempty" jsonschema:"Event description"`
+	Location         string                    `json:"location,omitempty" jsonschema:"Event location"`
+	StartTime        string                    `json:"start_time" jsonschema:"Event start time in RFC3339 format (e.g. '2024-01-15T09:00:00-05:00') or date for all-day events (e.g. '2024-01-15')"`
+	EndTime          string                    `json:"end_time" jsonschema:"Event end time in RFC3339 format or date for all-day events"`
+	TimeZone         string                    `json:"time_zone,omitempty" jsonschema:"IANA timezone (e.g. 'America/New_York'). Defaults to account calendar timezone."`
+	Attendees        []string                  `json:"attendees,omitempty" jsonschema:"Email addresses of attendees"`
+	DriveAttachments []calendarDriveAttachment `json:"drive_attachments,omitempty" jsonschema:"Google Drive files to attach to the event (metadata only, no file download)"`
 }
 
 func registerCreateEvent(srv *server.Server, mgr *auth.Manager) {
@@ -180,7 +220,7 @@ func registerCreateEvent(srv *server.Server, mgr *auth.Manager) {
 		Annotations: &mcp.ToolAnnotations{
 			DestructiveHint: server.BoolPtr(false),
 		},
-		Description: "Create a new event on a Google Calendar. Supports timed and all-day events, with optional attendees and location.",
+		Description: "Create a new event on a Google Calendar. Supports timed and all-day events, with optional attendees, location, and Google Drive file attachments.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input createEventInput) (*mcp.CallToolResult, any, error) {
 		svc, err := newService(ctx, mgr, input.Account)
 		if err != nil {
@@ -220,7 +260,20 @@ func registerCreateEvent(srv *server.Server, mgr *auth.Manager) {
 			})
 		}
 
-		created, err := svc.Events.Insert(calendarID, event).Do()
+		// Resolve Drive attachments.
+		if len(input.DriveAttachments) > 0 {
+			attachments, err := resolveDriveAttachmentsForEvent(ctx, mgr, input.DriveAttachments)
+			if err != nil {
+				return nil, nil, err
+			}
+			event.Attachments = attachments
+		}
+
+		call := svc.Events.Insert(calendarID, event)
+		if len(event.Attachments) > 0 {
+			call = call.SupportsAttachments(true)
+		}
+		created, err := call.Do()
 		if err != nil {
 			return nil, nil, fmt.Errorf("creating event: %w", err)
 		}
@@ -237,16 +290,17 @@ func registerCreateEvent(srv *server.Server, mgr *auth.Manager) {
 // --- update_event ---
 
 type updateEventInput struct {
-	Account     string   `json:"account" jsonschema:"Account name"`
-	CalendarID  string   `json:"calendar_id,omitempty" jsonschema:"Calendar ID (default: 'primary')"`
-	EventID     string   `json:"event_id" jsonschema:"Event ID to update"`
-	Summary     string   `json:"summary,omitempty" jsonschema:"New event title (leave empty to keep current)"`
-	Description string   `json:"description,omitempty" jsonschema:"New event description (leave empty to keep current)"`
-	Location    string   `json:"location,omitempty" jsonschema:"New event location (leave empty to keep current)"`
-	StartTime   string   `json:"start_time,omitempty" jsonschema:"New start time in RFC3339 format or date for all-day events (leave empty to keep current)"`
-	EndTime     string   `json:"end_time,omitempty" jsonschema:"New end time in RFC3339 format or date for all-day events (leave empty to keep current)"`
-	TimeZone    string   `json:"time_zone,omitempty" jsonschema:"IANA timezone (e.g. 'America/New_York')"`
-	Attendees   []string `json:"attendees,omitempty" jsonschema:"Replace attendee list with these email addresses. Omit to keep current attendees."`
+	Account          string                    `json:"account" jsonschema:"Account name"`
+	CalendarID       string                    `json:"calendar_id,omitempty" jsonschema:"Calendar ID (default: 'primary')"`
+	EventID          string                    `json:"event_id" jsonschema:"Event ID to update"`
+	Summary          string                    `json:"summary,omitempty" jsonschema:"New event title (leave empty to keep current)"`
+	Description      string                    `json:"description,omitempty" jsonschema:"New event description (leave empty to keep current)"`
+	Location         string                    `json:"location,omitempty" jsonschema:"New event location (leave empty to keep current)"`
+	StartTime        string                    `json:"start_time,omitempty" jsonschema:"New start time in RFC3339 format or date for all-day events (leave empty to keep current)"`
+	EndTime          string                    `json:"end_time,omitempty" jsonschema:"New end time in RFC3339 format or date for all-day events (leave empty to keep current)"`
+	TimeZone         string                    `json:"time_zone,omitempty" jsonschema:"IANA timezone (e.g. 'America/New_York')"`
+	Attendees        []string                  `json:"attendees,omitempty" jsonschema:"Replace attendee list with these email addresses. Omit to keep current attendees."`
+	DriveAttachments []calendarDriveAttachment `json:"drive_attachments,omitempty" jsonschema:"Google Drive files to attach to the event (adds to existing attachments). Metadata only, no file download."`
 }
 
 func registerUpdateEvent(srv *server.Server, mgr *auth.Manager) {
@@ -258,7 +312,8 @@ func registerUpdateEvent(srv *server.Server, mgr *auth.Manager) {
 		Description: `Update an existing calendar event. Only specified fields are changed; omitted fields keep their current values.
 
 To update attendees, provide the full list — it replaces the existing attendees.
-To change times, provide both start_time and end_time.`,
+To change times, provide both start_time and end_time.
+To add Drive file attachments, provide drive_attachments — they are appended to any existing attachments.`,
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input updateEventInput) (*mcp.CallToolResult, any, error) {
 		svc, err := newService(ctx, mgr, input.Account)
 		if err != nil {
@@ -318,7 +373,20 @@ To change times, provide both start_time and end_time.`,
 			}
 		}
 
-		updated, err := svc.Events.Update(calendarID, input.EventID, existing).Do()
+		// Add Drive attachments (appended to any existing attachments).
+		if len(input.DriveAttachments) > 0 {
+			attachments, err := resolveDriveAttachmentsForEvent(ctx, mgr, input.DriveAttachments)
+			if err != nil {
+				return nil, nil, err
+			}
+			existing.Attachments = append(existing.Attachments, attachments...)
+		}
+
+		call := svc.Events.Update(calendarID, input.EventID, existing)
+		if len(existing.Attachments) > 0 {
+			call = call.SupportsAttachments(true)
+		}
+		updated, err := call.Do()
 		if err != nil {
 			return nil, nil, fmt.Errorf("updating event: %w", err)
 		}
