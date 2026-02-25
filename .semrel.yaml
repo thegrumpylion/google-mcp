@@ -1,6 +1,2 @@
+version: v0
 development: true
-changelog:
-  exclude:
-    - chore
-    - docs
-    - style
