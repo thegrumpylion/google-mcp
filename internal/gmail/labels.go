@@ -3,6 +3,7 @@ package gmail
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/thegrumpylion/google-mcp/internal/auth"
@@ -10,7 +11,66 @@ import (
 	gmailapi "google.golang.org/api/gmail/v1"
 )
 
-// --- gmail_get_label ---
+// --- list_labels ---
+
+type listLabelsInput struct {
+	Account string `json:"account" jsonschema:"Account name or 'all' for all accounts"`
+}
+
+func registerListLabels(srv *server.Server, mgr *auth.Manager) {
+	server.AddTool(srv, &mcp.Tool{
+		Name:        "list_labels",
+		Description: "List all Gmail labels for an account. Set account to 'all' to list labels from all accounts. Useful for filtering searches.",
+		Annotations: &mcp.ToolAnnotations{
+			ReadOnlyHint: true,
+		},
+	}, func(ctx context.Context, req *mcp.CallToolRequest, input listLabelsInput) (*mcp.CallToolResult, any, error) {
+		accounts, err := mgr.ResolveAccounts(input.Account)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		var sb strings.Builder
+		multiAccount := len(accounts) > 1
+
+		for _, account := range accounts {
+			svc, err := newService(ctx, mgr, account)
+			if err != nil {
+				if multiAccount {
+					fmt.Fprintf(&sb, "=== Account: %s ===\nError: %v\n\n", account, err)
+					continue
+				}
+				return nil, nil, fmt.Errorf("creating Gmail service: %w", err)
+			}
+
+			resp, err := svc.Users.Labels.List("me").Do()
+			if err != nil {
+				if multiAccount {
+					fmt.Fprintf(&sb, "=== Account: %s ===\nError listing labels: %v\n\n", account, err)
+					continue
+				}
+				return nil, nil, fmt.Errorf("listing labels: %w", err)
+			}
+
+			if multiAccount {
+				fmt.Fprintf(&sb, "=== Account: %s ===\n", account)
+			}
+			sb.WriteString("Gmail labels:\n")
+			for _, label := range resp.Labels {
+				fmt.Fprintf(&sb, "  - %s (Label ID: %s, type: %s)\n", label.Name, label.Id, label.Type)
+			}
+			sb.WriteString("\n")
+		}
+
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{
+				&mcp.TextContent{Text: sb.String()},
+			},
+		}, nil, nil
+	})
+}
+
+// --- get_label ---
 
 type getLabelInput struct {
 	Account string `json:"account" jsonschema:"Account name"`
@@ -49,7 +109,7 @@ func registerGetLabel(srv *server.Server, mgr *auth.Manager) {
 	})
 }
 
-// --- gmail_create_label ---
+// --- create_label ---
 
 type createLabelInput struct {
 	Account               string `json:"account" jsonschema:"Account name"`
@@ -99,7 +159,7 @@ func registerCreateLabel(srv *server.Server, mgr *auth.Manager) {
 	})
 }
 
-// --- gmail_delete_label ---
+// --- delete_label ---
 
 type deleteLabelInput struct {
 	Account string `json:"account" jsonschema:"Account name"`
@@ -128,3 +188,6 @@ func registerDeleteLabel(srv *server.Server, mgr *auth.Manager) {
 		}, nil, nil
 	})
 }
+
+// TODO: Planned label tools (from api-coverage.md):
+// - update_label (Labels.Update / Labels.Patch)

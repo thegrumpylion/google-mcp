@@ -308,3 +308,6 @@ func registerUntrashThread(srv *server.Server, mgr *auth.Manager) {
 		}, nil, nil
 	})
 }
+
+// TODO: Planned thread tools (from api-coverage.md):
+// - delete_thread (Threads.Delete)

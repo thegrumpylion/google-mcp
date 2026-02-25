@@ -10,7 +10,13 @@ import (
 	"github.com/thegrumpylion/google-mcp/internal/server"
 )
 
-// --- gmail_get_vacation ---
+// TODO: Planned settings tools (from api-coverage.md):
+// - list_filters (Settings.Filters.List)
+// - create_filter (Settings.Filters.Create)
+// - delete_filter (Settings.Filters.Delete)
+// - list_sendas (Settings.SendAs.List)
+
+// --- get_vacation ---
 
 type getVacationInput struct {
 	Account string `json:"account" jsonschema:"Account name"`

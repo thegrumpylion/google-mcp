@@ -10,6 +10,11 @@ import (
 	"github.com/thegrumpylion/google-mcp/internal/server"
 )
 
+// TODO: Planned shared drive tools (from api-coverage.md):
+// - create_shared_drive (Drives.Create)
+// - update_shared_drive (Drives.Update)
+// - delete_shared_drive (Drives.Delete)
+
 // --- list_shared_drives ---
 
 type listSharedDrivesInput struct {

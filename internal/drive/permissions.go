@@ -215,6 +215,110 @@ func registerDeletePermission(srv *server.Server, mgr *auth.Manager) {
 	})
 }
 
+// --- share_file ---
+
+type shareInput struct {
+	Account      string `json:"account" jsonschema:"Account name"`
+	FileID       string `json:"file_id" jsonschema:"Google Drive file ID to share"`
+	EmailAddress string `json:"email_address,omitempty" jsonschema:"Email address to share with (required for 'user' and 'group' types)"`
+	Role         string `json:"role" jsonschema:"Permission role: 'reader', 'commenter', 'writer', or 'organizer'"`
+	Type         string `json:"type" jsonschema:"Permission type: 'user', 'group', 'domain', or 'anyone'"`
+	Domain       string `json:"domain,omitempty" jsonschema:"Domain to share with (required for 'domain' type)"`
+	SendEmail    bool   `json:"send_email,omitempty" jsonschema:"Send a notification email to the user (default: false)"`
+	Message      string `json:"message,omitempty" jsonschema:"Custom message to include in the notification email"`
+}
+
+func registerShare(srv *server.Server, mgr *auth.Manager) {
+	server.AddTool(srv, &mcp.Tool{
+		Name: "share_file",
+		Annotations: &mcp.ToolAnnotations{
+			DestructiveHint: server.BoolPtr(false),
+			IdempotentHint:  true,
+		},
+		Description: `Share a Google Drive file by adding permissions.
+
+Types:
+  - "user" — Share with a specific user (requires email_address)
+  - "group" — Share with a Google Group (requires email_address)
+  - "domain" — Share with an entire domain (requires domain)
+  - "anyone" — Share with anyone who has the link
+
+Roles:
+  - "reader" — View only
+  - "commenter" — View and comment
+  - "writer" — Edit
+  - "organizer" — Manage (shared drives only)`,
+	}, func(ctx context.Context, req *mcp.CallToolRequest, input shareInput) (*mcp.CallToolResult, any, error) {
+		// Validate inputs.
+		switch input.Type {
+		case "user", "group":
+			if input.EmailAddress == "" {
+				return nil, nil, fmt.Errorf("email_address is required for type %q", input.Type)
+			}
+		case "domain":
+			if input.Domain == "" {
+				return nil, nil, fmt.Errorf("domain is required for type 'domain'")
+			}
+		case "anyone":
+		default:
+			return nil, nil, fmt.Errorf("invalid type %q: must be 'user', 'group', 'domain', or 'anyone'", input.Type)
+		}
+
+		switch input.Role {
+		case "reader", "commenter", "writer", "organizer":
+		default:
+			return nil, nil, fmt.Errorf("invalid role %q: must be 'reader', 'commenter', 'writer', or 'organizer'", input.Role)
+		}
+
+		svc, err := newService(ctx, mgr, input.Account)
+		if err != nil {
+			return nil, nil, fmt.Errorf("creating Drive service: %w", err)
+		}
+
+		perm := &drive.Permission{
+			Role:         input.Role,
+			Type:         input.Type,
+			EmailAddress: input.EmailAddress,
+			Domain:       input.Domain,
+		}
+
+		call := svc.Permissions.Create(input.FileID, perm).
+			Fields("id,role,type,emailAddress,domain")
+
+		if input.SendEmail {
+			call = call.SendNotificationEmail(true)
+			if input.Message != "" {
+				call = call.EmailMessage(input.Message)
+			}
+		} else {
+			call = call.SendNotificationEmail(false)
+		}
+
+		created, err := call.Do()
+		if err != nil {
+			return nil, nil, fmt.Errorf("sharing file: %w", err)
+		}
+
+		var sb strings.Builder
+		fmt.Fprintf(&sb, "File shared.\n\n")
+		fmt.Fprintf(&sb, "Permission ID: %s\n", created.Id)
+		fmt.Fprintf(&sb, "Role: %s\n", created.Role)
+		fmt.Fprintf(&sb, "Type: %s\n", created.Type)
+		if created.EmailAddress != "" {
+			fmt.Fprintf(&sb, "Shared with: %s\n", created.EmailAddress)
+		}
+		if created.Domain != "" {
+			fmt.Fprintf(&sb, "Domain: %s\n", created.Domain)
+		}
+
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{
+				&mcp.TextContent{Text: sb.String()},
+			},
+		}, nil, nil
+	})
+}
+
 // formatPermission formats a single permission for display.
 func formatPermission(p *drive.Permission) string {
 	var sb strings.Builder
