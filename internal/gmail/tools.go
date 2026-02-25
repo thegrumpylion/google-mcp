@@ -88,8 +88,8 @@ type searchInput struct {
 
 func registerSearch(server *mcp.Server, mgr *auth.Manager) {
 	mcp.AddTool(server, &mcp.Tool{
-		Name:        "gmail_search",
-		Description: "Search Gmail messages using Gmail query syntax. Set account to 'all' to search across all accounts. Returns message IDs and snippets. Use gmail_read to get full message content.",
+		Name:        "search",
+		Description: "Search Gmail messages using Gmail query syntax. Set account to 'all' to search across all accounts. Returns message IDs and snippets. Use read to get full message content.",
 		Annotations: &mcp.ToolAnnotations{
 			ReadOnlyHint: true,
 		},
@@ -169,13 +169,13 @@ func registerSearch(server *mcp.Server, mgr *auth.Manager) {
 
 type readInput struct {
 	Account   string `json:"account" jsonschema:"Account name to use"`
-	MessageID string `json:"message_id" jsonschema:"Gmail message ID (from gmail_search results)"`
+	MessageID string `json:"message_id" jsonschema:"Gmail message ID (from search results)"`
 }
 
 func registerRead(server *mcp.Server, mgr *auth.Manager) {
 	mcp.AddTool(server, &mcp.Tool{
-		Name:        "gmail_read",
-		Description: "Read the full content of a Gmail message by ID. Returns headers, body text, and attachment list. Use gmail_get_attachment to download attachments.",
+		Name:        "read",
+		Description: "Read the full content of a Gmail message by ID. Returns headers, body text, and attachment list. Use get_attachment to download attachments.",
 		Annotations: &mcp.ToolAnnotations{
 			ReadOnlyHint: true,
 		},
@@ -220,7 +220,7 @@ func registerRead(server *mcp.Server, mgr *auth.Manager) {
 				fmt.Fprintf(&sb, "  - %s (MIME: %s, Size: %d bytes, Attachment ID: %s)\n",
 					a.filename, a.mimeType, a.size, a.attachmentID)
 			}
-			sb.WriteString("\nUse gmail_get_attachment with the message ID and attachment ID to download.")
+			sb.WriteString("\nUse get_attachment with the message ID and attachment ID to download.")
 		}
 
 		return &mcp.CallToolResult{
@@ -292,7 +292,7 @@ type sendInput struct {
 
 func registerSend(server *mcp.Server, mgr *auth.Manager) {
 	mcp.AddTool(server, &mcp.Tool{
-		Name:        "gmail_send",
+		Name:        "send",
 		Description: "Send an email via Gmail. Supports To, CC, BCC, and replying to existing messages.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input sendInput) (*mcp.CallToolResult, any, error) {
 		svc, err := newService(ctx, mgr, input.Account)
@@ -363,7 +363,7 @@ type listLabelsInput struct {
 
 func registerListLabels(server *mcp.Server, mgr *auth.Manager) {
 	mcp.AddTool(server, &mcp.Tool{
-		Name:        "gmail_list_labels",
+		Name:        "list_labels",
 		Description: "List all Gmail labels for an account. Set account to 'all' to list labels from all accounts. Useful for filtering searches.",
 		Annotations: &mcp.ToolAnnotations{
 			ReadOnlyHint: true,

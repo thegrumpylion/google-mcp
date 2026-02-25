@@ -13,12 +13,12 @@ import (
 
 type readThreadInput struct {
 	Account  string `json:"account" jsonschema:"Account name to use"`
-	ThreadID string `json:"thread_id" jsonschema:"Gmail thread ID (from gmail_search or gmail_read results)"`
+	ThreadID string `json:"thread_id" jsonschema:"Gmail thread ID (from search or read results)"`
 }
 
 func registerReadThread(server *mcp.Server, mgr *auth.Manager) {
 	mcp.AddTool(server, &mcp.Tool{
-		Name:        "gmail_read_thread",
+		Name:        "read_thread",
 		Description: "Read all messages in a Gmail thread/conversation by thread ID. Returns each message with headers and body text in chronological order.",
 		Annotations: &mcp.ToolAnnotations{
 			ReadOnlyHint: true,

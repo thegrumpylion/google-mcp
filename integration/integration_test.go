@@ -177,9 +177,9 @@ func TestGmail_ToolsList(t *testing.T) {
 	}
 
 	expectedTools := []string{
-		"accounts_list", "gmail_search", "gmail_read", "gmail_read_thread",
-		"gmail_send", "gmail_list_labels", "gmail_modify", "gmail_get_attachment",
-		"gmail_draft_create", "gmail_draft_list", "gmail_draft_send",
+		"accounts_list", "search", "read", "read_thread",
+		"send", "list_labels", "modify", "get_attachment",
+		"draft_create", "draft_list", "draft_send",
 	}
 
 	if len(tools.Tools) != len(expectedTools) {
@@ -235,7 +235,7 @@ func TestGmail_Search_SingleAccount(t *testing.T) {
 
 	account := firstAccount(t)
 	result, err := session.CallTool(ctx, &mcp.CallToolParams{
-		Name: "gmail_search",
+		Name: "search",
 		Arguments: map[string]any{
 			"account":     account,
 			"query":       "newer_than:7d",
@@ -243,7 +243,7 @@ func TestGmail_Search_SingleAccount(t *testing.T) {
 		},
 	})
 	if err != nil {
-		t.Fatalf("gmail_search: %v", err)
+		t.Fatalf("search: %v", err)
 	}
 
 	text := textContent(t, result)
@@ -263,7 +263,7 @@ func TestGmail_Search_AllAccounts(t *testing.T) {
 	defer session.Close()
 
 	result, err := session.CallTool(ctx, &mcp.CallToolParams{
-		Name: "gmail_search",
+		Name: "search",
 		Arguments: map[string]any{
 			"account":     "all",
 			"query":       "newer_than:7d",
@@ -271,7 +271,7 @@ func TestGmail_Search_AllAccounts(t *testing.T) {
 		},
 	})
 	if err != nil {
-		t.Fatalf("gmail_search (all): %v", err)
+		t.Fatalf("search (all): %v", err)
 	}
 
 	text := textContent(t, result)
@@ -299,7 +299,7 @@ func TestGmail_ReadMessage(t *testing.T) {
 
 	// First, search for a message.
 	searchResult, err := session.CallTool(ctx, &mcp.CallToolParams{
-		Name: "gmail_search",
+		Name: "search",
 		Arguments: map[string]any{
 			"account":     account,
 			"query":       "newer_than:30d",
@@ -307,7 +307,7 @@ func TestGmail_ReadMessage(t *testing.T) {
 		},
 	})
 	if err != nil {
-		t.Fatalf("gmail_search: %v", err)
+		t.Fatalf("search: %v", err)
 	}
 
 	searchText := textContent(t, searchResult)
@@ -323,22 +323,22 @@ func TestGmail_ReadMessage(t *testing.T) {
 
 	// Read the message.
 	readResult, err := session.CallTool(ctx, &mcp.CallToolParams{
-		Name: "gmail_read",
+		Name: "read",
 		Arguments: map[string]any{
 			"account":    account,
 			"message_id": msgID,
 		},
 	})
 	if err != nil {
-		t.Fatalf("gmail_read: %v", err)
+		t.Fatalf("read: %v", err)
 	}
 
 	text := textContent(t, readResult)
 	if !strings.Contains(text, "Thread ID:") {
-		t.Errorf("gmail_read missing Thread ID in output: %s", text[:min(len(text), 200)])
+		t.Errorf("read missing Thread ID in output: %s", text[:min(len(text), 200)])
 	}
 	if !strings.Contains(text, "From:") {
-		t.Errorf("gmail_read missing From header in output")
+		t.Errorf("read missing From header in output")
 	}
 }
 
@@ -355,7 +355,7 @@ func TestGmail_ReadThread(t *testing.T) {
 
 	// Search for a message to get a thread ID.
 	searchResult, err := session.CallTool(ctx, &mcp.CallToolParams{
-		Name: "gmail_search",
+		Name: "search",
 		Arguments: map[string]any{
 			"account":     account,
 			"query":       "newer_than:30d",
@@ -363,7 +363,7 @@ func TestGmail_ReadThread(t *testing.T) {
 		},
 	})
 	if err != nil {
-		t.Fatalf("gmail_search: %v", err)
+		t.Fatalf("search: %v", err)
 	}
 
 	searchText := textContent(t, searchResult)
@@ -378,40 +378,40 @@ func TestGmail_ReadThread(t *testing.T) {
 
 	// Read the message to get the thread ID.
 	readResult, err := session.CallTool(ctx, &mcp.CallToolParams{
-		Name: "gmail_read",
+		Name: "read",
 		Arguments: map[string]any{
 			"account":    account,
 			"message_id": msgID,
 		},
 	})
 	if err != nil {
-		t.Fatalf("gmail_read: %v", err)
+		t.Fatalf("read: %v", err)
 	}
 
 	readText := textContent(t, readResult)
 	threadID := extractAfter(readText, "Thread ID: ")
 	if threadID == "" {
-		t.Fatal("could not extract thread ID from gmail_read output")
+		t.Fatal("could not extract thread ID from read output")
 	}
 
 	// Read the thread.
 	threadResult, err := session.CallTool(ctx, &mcp.CallToolParams{
-		Name: "gmail_read_thread",
+		Name: "read_thread",
 		Arguments: map[string]any{
 			"account":   account,
 			"thread_id": threadID,
 		},
 	})
 	if err != nil {
-		t.Fatalf("gmail_read_thread: %v", err)
+		t.Fatalf("read_thread: %v", err)
 	}
 
 	threadText := textContent(t, threadResult)
 	if !strings.Contains(threadText, "Thread ID:") {
-		t.Errorf("gmail_read_thread missing Thread ID")
+		t.Errorf("read_thread missing Thread ID")
 	}
 	if !strings.Contains(threadText, "Messages:") {
-		t.Errorf("gmail_read_thread missing Messages count")
+		t.Errorf("read_thread missing Messages count")
 	}
 }
 
@@ -426,19 +426,19 @@ func TestGmail_ListLabels(t *testing.T) {
 
 	account := firstAccount(t)
 	result, err := session.CallTool(ctx, &mcp.CallToolParams{
-		Name: "gmail_list_labels",
+		Name: "list_labels",
 		Arguments: map[string]any{
 			"account": account,
 		},
 	})
 	if err != nil {
-		t.Fatalf("gmail_list_labels: %v", err)
+		t.Fatalf("list_labels: %v", err)
 	}
 
 	text := textContent(t, result)
 	// Every Gmail account has INBOX.
 	if !strings.Contains(text, "INBOX") {
-		t.Errorf("gmail_list_labels missing INBOX label")
+		t.Errorf("list_labels missing INBOX label")
 	}
 }
 
@@ -452,13 +452,13 @@ func TestGmail_ListLabels_AllAccounts(t *testing.T) {
 	defer session.Close()
 
 	result, err := session.CallTool(ctx, &mcp.CallToolParams{
-		Name: "gmail_list_labels",
+		Name: "list_labels",
 		Arguments: map[string]any{
 			"account": "all",
 		},
 	})
 	if err != nil {
-		t.Fatalf("gmail_list_labels (all): %v", err)
+		t.Fatalf("list_labels (all): %v", err)
 	}
 
 	text := textContent(t, result)
@@ -482,14 +482,14 @@ func TestGmail_DraftList(t *testing.T) {
 
 	account := firstAccount(t)
 	result, err := session.CallTool(ctx, &mcp.CallToolParams{
-		Name: "gmail_draft_list",
+		Name: "draft_list",
 		Arguments: map[string]any{
 			"account":     account,
 			"max_results": 5,
 		},
 	})
 	if err != nil {
-		t.Fatalf("gmail_draft_list: %v", err)
+		t.Fatalf("draft_list: %v", err)
 	}
 
 	text := textContent(t, result)
@@ -516,9 +516,9 @@ func TestDrive_ToolsList(t *testing.T) {
 	}
 
 	expectedTools := []string{
-		"accounts_list", "drive_search", "drive_list", "drive_get", "drive_read",
-		"drive_upload", "drive_update", "drive_delete", "drive_create_folder",
-		"drive_move", "drive_copy", "drive_share",
+		"accounts_list", "search", "list", "get", "read",
+		"upload", "update", "delete", "create_folder",
+		"move", "copy", "share",
 	}
 
 	if len(tools.Tools) != len(expectedTools) {
@@ -547,7 +547,7 @@ func TestDrive_Search(t *testing.T) {
 
 	account := firstAccount(t)
 	result, err := session.CallTool(ctx, &mcp.CallToolParams{
-		Name: "drive_search",
+		Name: "search",
 		Arguments: map[string]any{
 			"account":     account,
 			"query":       "trashed = false",
@@ -555,12 +555,12 @@ func TestDrive_Search(t *testing.T) {
 		},
 	})
 	if err != nil {
-		t.Fatalf("drive_search: %v", err)
+		t.Fatalf("search: %v", err)
 	}
 
 	text := textContent(t, result)
 	if !strings.Contains(text, "ID:") && !strings.Contains(text, "No files found") {
-		t.Errorf("unexpected drive_search output: %s", text)
+		t.Errorf("unexpected search output: %s", text)
 	}
 }
 
@@ -575,19 +575,19 @@ func TestDrive_List(t *testing.T) {
 
 	account := firstAccount(t)
 	result, err := session.CallTool(ctx, &mcp.CallToolParams{
-		Name: "drive_list",
+		Name: "list",
 		Arguments: map[string]any{
 			"account":     account,
 			"max_results": 2,
 		},
 	})
 	if err != nil {
-		t.Fatalf("drive_list: %v", err)
+		t.Fatalf("list: %v", err)
 	}
 
 	text := textContent(t, result)
 	if !strings.Contains(text, "ID:") && !strings.Contains(text, "No files found") {
-		t.Errorf("unexpected drive_list output: %s", text)
+		t.Errorf("unexpected list output: %s", text)
 	}
 }
 
@@ -604,44 +604,44 @@ func TestDrive_GetAndRead(t *testing.T) {
 
 	// First, find a file.
 	listResult, err := session.CallTool(ctx, &mcp.CallToolParams{
-		Name: "drive_list",
+		Name: "list",
 		Arguments: map[string]any{
 			"account":     account,
 			"max_results": 1,
 		},
 	})
 	if err != nil {
-		t.Fatalf("drive_list: %v", err)
+		t.Fatalf("list: %v", err)
 	}
 
 	listText := textContent(t, listResult)
 	if strings.Contains(listText, "No files found") {
-		t.Skip("no files to test drive_get/drive_read")
+		t.Skip("no files to test get/read")
 	}
 
 	fileID := extractAfter(listText, "ID: ")
 	if fileID == "" {
-		t.Fatal("could not extract file ID from drive_list output")
+		t.Fatal("could not extract file ID from list output")
 	}
 
 	// Get file metadata.
 	getResult, err := session.CallTool(ctx, &mcp.CallToolParams{
-		Name: "drive_get",
+		Name: "get",
 		Arguments: map[string]any{
 			"account": account,
 			"file_id": fileID,
 		},
 	})
 	if err != nil {
-		t.Fatalf("drive_get: %v", err)
+		t.Fatalf("get: %v", err)
 	}
 
 	getText := textContent(t, getResult)
 	if !strings.Contains(getText, "Name:") {
-		t.Errorf("drive_get missing Name in output")
+		t.Errorf("get missing Name in output")
 	}
 	if !strings.Contains(getText, "MIME Type:") {
-		t.Errorf("drive_get missing MIME Type in output")
+		t.Errorf("get missing MIME Type in output")
 	}
 }
 
@@ -655,7 +655,7 @@ func TestDrive_Search_AllAccounts(t *testing.T) {
 	defer session.Close()
 
 	result, err := session.CallTool(ctx, &mcp.CallToolParams{
-		Name: "drive_search",
+		Name: "search",
 		Arguments: map[string]any{
 			"account":     "all",
 			"query":       "trashed = false",
@@ -663,7 +663,7 @@ func TestDrive_Search_AllAccounts(t *testing.T) {
 		},
 	})
 	if err != nil {
-		t.Fatalf("drive_search (all): %v", err)
+		t.Fatalf("search (all): %v", err)
 	}
 
 	text := textContent(t, result)
@@ -693,9 +693,9 @@ func TestCalendar_ToolsList(t *testing.T) {
 	}
 
 	expectedTools := []string{
-		"accounts_list", "calendar_list_calendars", "calendar_list_events",
-		"calendar_get_event", "calendar_create_event", "calendar_update_event",
-		"calendar_delete_event", "calendar_respond_event",
+		"accounts_list", "list_calendars", "list_events",
+		"get_event", "create_event", "update_event",
+		"delete_event", "respond_event",
 	}
 
 	if len(tools.Tools) != len(expectedTools) {
@@ -724,18 +724,18 @@ func TestCalendar_ListCalendars(t *testing.T) {
 
 	account := firstAccount(t)
 	result, err := session.CallTool(ctx, &mcp.CallToolParams{
-		Name: "calendar_list_calendars",
+		Name: "list_calendars",
 		Arguments: map[string]any{
 			"account": account,
 		},
 	})
 	if err != nil {
-		t.Fatalf("calendar_list_calendars: %v", err)
+		t.Fatalf("list_calendars: %v", err)
 	}
 
 	text := textContent(t, result)
 	if !strings.Contains(text, "Found") || !strings.Contains(text, "calendars") {
-		t.Errorf("unexpected calendar_list_calendars output: %s", text[:min(len(text), 200)])
+		t.Errorf("unexpected list_calendars output: %s", text[:min(len(text), 200)])
 	}
 }
 
@@ -750,20 +750,20 @@ func TestCalendar_ListEvents(t *testing.T) {
 
 	account := firstAccount(t)
 	result, err := session.CallTool(ctx, &mcp.CallToolParams{
-		Name: "calendar_list_events",
+		Name: "list_events",
 		Arguments: map[string]any{
 			"account":     account,
 			"max_results": 3,
 		},
 	})
 	if err != nil {
-		t.Fatalf("calendar_list_events: %v", err)
+		t.Fatalf("list_events: %v", err)
 	}
 
 	text := textContent(t, result)
 	// Should either list events or say no events found.
 	if !strings.Contains(text, "Found") && !strings.Contains(text, "No events found") {
-		t.Errorf("unexpected calendar_list_events output: %s", text[:min(len(text), 200)])
+		t.Errorf("unexpected list_events output: %s", text[:min(len(text), 200)])
 	}
 }
 
@@ -780,44 +780,44 @@ func TestCalendar_GetEvent(t *testing.T) {
 
 	// First, list events to find one.
 	listResult, err := session.CallTool(ctx, &mcp.CallToolParams{
-		Name: "calendar_list_events",
+		Name: "list_events",
 		Arguments: map[string]any{
 			"account":     account,
 			"max_results": 1,
 		},
 	})
 	if err != nil {
-		t.Fatalf("calendar_list_events: %v", err)
+		t.Fatalf("list_events: %v", err)
 	}
 
 	listText := textContent(t, listResult)
 	if strings.Contains(listText, "No events found") {
-		t.Skip("no events to test calendar_get_event")
+		t.Skip("no events to test get_event")
 	}
 
 	eventID := extractAfter(listText, "ID: ")
 	if eventID == "" {
-		t.Fatal("could not extract event ID from calendar_list_events output")
+		t.Fatal("could not extract event ID from list_events output")
 	}
 
 	// Get the event.
 	getResult, err := session.CallTool(ctx, &mcp.CallToolParams{
-		Name: "calendar_get_event",
+		Name: "get_event",
 		Arguments: map[string]any{
 			"account":  account,
 			"event_id": eventID,
 		},
 	})
 	if err != nil {
-		t.Fatalf("calendar_get_event: %v", err)
+		t.Fatalf("get_event: %v", err)
 	}
 
 	getText := textContent(t, getResult)
 	if !strings.Contains(getText, "Event:") {
-		t.Errorf("calendar_get_event missing Event header")
+		t.Errorf("get_event missing Event header")
 	}
 	if !strings.Contains(getText, eventID) {
-		t.Errorf("calendar_get_event missing event ID in output")
+		t.Errorf("get_event missing event ID in output")
 	}
 }
 
@@ -831,13 +831,13 @@ func TestCalendar_ListCalendars_AllAccounts(t *testing.T) {
 	defer session.Close()
 
 	result, err := session.CallTool(ctx, &mcp.CallToolParams{
-		Name: "calendar_list_calendars",
+		Name: "list_calendars",
 		Arguments: map[string]any{
 			"account": "all",
 		},
 	})
 	if err != nil {
-		t.Fatalf("calendar_list_calendars (all): %v", err)
+		t.Fatalf("list_calendars (all): %v", err)
 	}
 
 	text := textContent(t, result)

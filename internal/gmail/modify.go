@@ -15,7 +15,7 @@ import (
 type modifyInput struct {
 	Account      string   `json:"account" jsonschema:"Account name to use"`
 	MessageID    string   `json:"message_id" jsonschema:"Gmail message ID to modify"`
-	AddLabels    []string `json:"add_labels,omitempty" jsonschema:"Label IDs to add (e.g. 'STARRED', 'IMPORTANT', 'TRASH', or custom label IDs from gmail_list_labels)"`
+	AddLabels    []string `json:"add_labels,omitempty" jsonschema:"Label IDs to add (e.g. 'STARRED', 'IMPORTANT', 'TRASH', or custom label IDs from list_labels)"`
 	RemoveLabels []string `json:"remove_labels,omitempty" jsonschema:"Label IDs to remove (e.g. 'UNREAD', 'INBOX', 'STARRED')"`
 }
 
@@ -29,7 +29,7 @@ type modifyInput struct {
 
 func registerModify(server *mcp.Server, mgr *auth.Manager) {
 	mcp.AddTool(server, &mcp.Tool{
-		Name: "gmail_modify",
+		Name: "modify",
 		Description: `Modify labels on a Gmail message. Use this to archive, trash, star, or mark messages as read/unread.
 
 Common operations:
@@ -40,7 +40,7 @@ Common operations:
   - Star: add_labels=["STARRED"]
   - Unstar: remove_labels=["STARRED"]
 
-Use gmail_list_labels to discover custom label IDs.`,
+Use list_labels to discover custom label IDs.`,
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input modifyInput) (*mcp.CallToolResult, any, error) {
 		if len(input.AddLabels) == 0 && len(input.RemoveLabels) == 0 {
 			return nil, nil, fmt.Errorf("at least one of add_labels or remove_labels must be specified")

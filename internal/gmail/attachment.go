@@ -50,13 +50,13 @@ func listAttachments(part *gmailapi.MessagePart) []attachmentInfo {
 type getAttachmentInput struct {
 	Account      string `json:"account" jsonschema:"Account name to use"`
 	MessageID    string `json:"message_id" jsonschema:"Gmail message ID that contains the attachment"`
-	AttachmentID string `json:"attachment_id" jsonschema:"Attachment ID (from gmail_read or gmail_read_thread results)"`
+	AttachmentID string `json:"attachment_id" jsonschema:"Attachment ID (from read or read_thread results)"`
 }
 
 func registerGetAttachment(server *mcp.Server, mgr *auth.Manager) {
 	mcp.AddTool(server, &mcp.Tool{
-		Name:        "gmail_get_attachment",
-		Description: "Download a Gmail message attachment by ID. Returns the attachment data as base64. Use gmail_read to discover attachment IDs.",
+		Name:        "get_attachment",
+		Description: "Download a Gmail message attachment by ID. Returns the attachment data as base64. Use read to discover attachment IDs.",
 		Annotations: &mcp.ToolAnnotations{
 			ReadOnlyHint: true,
 		},

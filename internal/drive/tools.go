@@ -88,7 +88,7 @@ type searchInput struct {
 
 func registerSearch(server *mcp.Server, mgr *auth.Manager) {
 	mcp.AddTool(server, &mcp.Tool{
-		Name:        "drive_search",
+		Name:        "search",
 		Description: "Search Google Drive files using Drive query syntax. Set account to 'all' to search across all accounts. Returns file IDs, names, and metadata.",
 		Annotations: &mcp.ToolAnnotations{
 			ReadOnlyHint: true,
@@ -169,7 +169,7 @@ type listInput struct {
 
 func registerList(server *mcp.Server, mgr *auth.Manager) {
 	mcp.AddTool(server, &mcp.Tool{
-		Name:        "drive_list",
+		Name:        "list",
 		Description: "List files in Google Drive, optionally within a specific folder. Set account to 'all' to list from all accounts. Returns file IDs, names, and metadata.",
 		Annotations: &mcp.ToolAnnotations{
 			ReadOnlyHint: true,
@@ -260,7 +260,7 @@ type getInput struct {
 
 func registerGet(server *mcp.Server, mgr *auth.Manager) {
 	mcp.AddTool(server, &mcp.Tool{
-		Name:        "drive_get",
+		Name:        "get",
 		Description: "Get metadata for a specific Google Drive file by ID.",
 		Annotations: &mcp.ToolAnnotations{
 			ReadOnlyHint: true,
@@ -325,7 +325,7 @@ type readInput struct {
 
 func registerRead(server *mcp.Server, mgr *auth.Manager) {
 	mcp.AddTool(server, &mcp.Tool{
-		Name:        "drive_read",
+		Name:        "read",
 		Description: "Read/download the content of a Google Drive file. For Google Docs/Sheets/Slides, specify export_mime to choose the export format (e.g. 'text/plain'). Returns text content directly for text files, or base64 for binary files.",
 		Annotations: &mcp.ToolAnnotations{
 			ReadOnlyHint: true,
@@ -404,7 +404,7 @@ type uploadInput struct {
 
 func registerUpload(server *mcp.Server, mgr *auth.Manager) {
 	mcp.AddTool(server, &mcp.Tool{
-		Name: "drive_upload",
+		Name: "upload",
 		Description: `Upload a new file to Google Drive. Provide content as plain text or base64-encoded binary.
 
 For text files, just pass the content directly. For binary files, base64-encode the content and set base64=true.`,
@@ -471,7 +471,7 @@ type updateInput struct {
 
 func registerUpdate(server *mcp.Server, mgr *auth.Manager) {
 	mcp.AddTool(server, &mcp.Tool{
-		Name:        "drive_update",
+		Name:        "update",
 		Description: "Update file metadata on Google Drive (rename, change description, change MIME type). Only specified fields are changed.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input updateInput) (*mcp.CallToolResult, any, error) {
 		svc, err := newService(ctx, mgr, input.Account)
@@ -526,7 +526,7 @@ type deleteInput struct {
 
 func registerDelete(server *mcp.Server, mgr *auth.Manager) {
 	mcp.AddTool(server, &mcp.Tool{
-		Name: "drive_delete",
+		Name: "delete",
 		Description: `Delete a file from Google Drive. By default, moves the file to trash.
 
 Set permanently=true to permanently delete the file (cannot be undone).`,
@@ -574,7 +574,7 @@ type createFolderInput struct {
 
 func registerCreateFolder(server *mcp.Server, mgr *auth.Manager) {
 	mcp.AddTool(server, &mcp.Tool{
-		Name:        "drive_create_folder",
+		Name:        "create_folder",
 		Description: "Create a new folder in Google Drive, optionally inside an existing folder.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input createFolderInput) (*mcp.CallToolResult, any, error) {
 		svc, err := newService(ctx, mgr, input.Account)
@@ -621,7 +621,7 @@ type moveInput struct {
 
 func registerMove(server *mcp.Server, mgr *auth.Manager) {
 	mcp.AddTool(server, &mcp.Tool{
-		Name:        "drive_move",
+		Name:        "move",
 		Description: "Move a file to a different folder in Google Drive.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input moveInput) (*mcp.CallToolResult, any, error) {
 		svc, err := newService(ctx, mgr, input.Account)
@@ -665,7 +665,7 @@ type copyInput struct {
 
 func registerCopy(server *mcp.Server, mgr *auth.Manager) {
 	mcp.AddTool(server, &mcp.Tool{
-		Name:        "drive_copy",
+		Name:        "copy",
 		Description: "Create a copy of a file in Google Drive, optionally with a new name or in a different folder.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input copyInput) (*mcp.CallToolResult, any, error) {
 		svc, err := newService(ctx, mgr, input.Account)
@@ -722,7 +722,7 @@ type shareInput struct {
 
 func registerShare(server *mcp.Server, mgr *auth.Manager) {
 	mcp.AddTool(server, &mcp.Tool{
-		Name: "drive_share",
+		Name: "share",
 		Description: `Share a Google Drive file by adding permissions.
 
 Types:

@@ -25,8 +25,8 @@ type draftCreateInput struct {
 
 func registerDraftCreate(server *mcp.Server, mgr *auth.Manager) {
 	mcp.AddTool(server, &mcp.Tool{
-		Name:        "gmail_draft_create",
-		Description: "Create a Gmail draft. The draft is saved but not sent. Use gmail_draft_send to send it later, or gmail_draft_list to see all drafts.",
+		Name:        "draft_create",
+		Description: "Create a Gmail draft. The draft is saved but not sent. Use draft_send to send it later, or draft_list to see all drafts.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input draftCreateInput) (*mcp.CallToolResult, any, error) {
 		svc, err := newService(ctx, mgr, input.Account)
 		if err != nil {
@@ -95,7 +95,7 @@ type draftListInput struct {
 
 func registerDraftList(server *mcp.Server, mgr *auth.Manager) {
 	mcp.AddTool(server, &mcp.Tool{
-		Name:        "gmail_draft_list",
+		Name:        "draft_list",
 		Description: "List Gmail drafts. Set account to 'all' to list from all accounts. Returns draft IDs and message snippets.",
 		Annotations: &mcp.ToolAnnotations{
 			ReadOnlyHint: true,
@@ -190,12 +190,12 @@ func registerDraftList(server *mcp.Server, mgr *auth.Manager) {
 
 type draftSendInput struct {
 	Account string `json:"account" jsonschema:"Account name to use"`
-	DraftID string `json:"draft_id" jsonschema:"Draft ID to send (from gmail_draft_list or gmail_draft_create)"`
+	DraftID string `json:"draft_id" jsonschema:"Draft ID to send (from draft_list or draft_create)"`
 }
 
 func registerDraftSend(server *mcp.Server, mgr *auth.Manager) {
 	mcp.AddTool(server, &mcp.Tool{
-		Name:        "gmail_draft_send",
+		Name:        "draft_send",
 		Description: "Send an existing Gmail draft. The draft is removed after sending.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input draftSendInput) (*mcp.CallToolResult, any, error) {
 		svc, err := newService(ctx, mgr, input.Account)

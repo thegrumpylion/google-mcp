@@ -81,7 +81,7 @@ type listCalendarsInput struct {
 
 func registerListCalendars(server *mcp.Server, mgr *auth.Manager) {
 	mcp.AddTool(server, &mcp.Tool{
-		Name:        "calendar_list_calendars",
+		Name:        "list_calendars",
 		Description: "List all calendars accessible by the account. Set account to 'all' to list calendars from all accounts. Returns calendar IDs and names.",
 		Annotations: &mcp.ToolAnnotations{
 			ReadOnlyHint: true,
@@ -152,7 +152,7 @@ type listEventsInput struct {
 
 func registerListEvents(server *mcp.Server, mgr *auth.Manager) {
 	mcp.AddTool(server, &mcp.Tool{
-		Name:        "calendar_list_events",
+		Name:        "list_events",
 		Description: "List events from a Google Calendar within a time range. Set account to 'all' to list events from all accounts. Defaults to upcoming events in the next 7 days.",
 		Annotations: &mcp.ToolAnnotations{
 			ReadOnlyHint: true,
@@ -258,7 +258,7 @@ type getEventInput struct {
 
 func registerGetEvent(server *mcp.Server, mgr *auth.Manager) {
 	mcp.AddTool(server, &mcp.Tool{
-		Name:        "calendar_get_event",
+		Name:        "get_event",
 		Description: "Get full details of a specific calendar event by ID.",
 		Annotations: &mcp.ToolAnnotations{
 			ReadOnlyHint: true,
@@ -303,7 +303,7 @@ type createEventInput struct {
 
 func registerCreateEvent(server *mcp.Server, mgr *auth.Manager) {
 	mcp.AddTool(server, &mcp.Tool{
-		Name:        "calendar_create_event",
+		Name:        "create_event",
 		Description: "Create a new event on a Google Calendar. Supports timed and all-day events, with optional attendees and location.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input createEventInput) (*mcp.CallToolResult, any, error) {
 		svc, err := newService(ctx, mgr, input.Account)
@@ -375,7 +375,7 @@ type updateEventInput struct {
 
 func registerUpdateEvent(server *mcp.Server, mgr *auth.Manager) {
 	mcp.AddTool(server, &mcp.Tool{
-		Name: "calendar_update_event",
+		Name: "update_event",
 		Description: `Update an existing calendar event. Only specified fields are changed; omitted fields keep their current values.
 
 To update attendees, provide the full list — it replaces the existing attendees.
@@ -463,7 +463,7 @@ type deleteEventInput struct {
 
 func registerDeleteEvent(server *mcp.Server, mgr *auth.Manager) {
 	mcp.AddTool(server, &mcp.Tool{
-		Name:        "calendar_delete_event",
+		Name:        "delete_event",
 		Description: "Delete a calendar event by ID. This permanently removes the event from the calendar.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input deleteEventInput) (*mcp.CallToolResult, any, error) {
 		svc, err := newService(ctx, mgr, input.Account)
@@ -499,7 +499,7 @@ type respondEventInput struct {
 
 func registerRespondEvent(server *mcp.Server, mgr *auth.Manager) {
 	mcp.AddTool(server, &mcp.Tool{
-		Name: "calendar_respond_event",
+		Name: "respond_event",
 		Description: `Respond to a calendar event invitation. Sets your attendance status.
 
 Valid responses:
