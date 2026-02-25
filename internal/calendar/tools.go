@@ -25,6 +25,9 @@ func RegisterTools(server *mcp.Server, mgr *auth.Manager) {
 	registerListEvents(server, mgr)
 	registerGetEvent(server, mgr)
 	registerCreateEvent(server, mgr)
+	registerUpdateEvent(server, mgr)
+	registerDeleteEvent(server, mgr)
+	registerRespondEvent(server, mgr)
 }
 
 func newService(ctx context.Context, mgr *auth.Manager, account string) (*calendar.Service, error) {
@@ -350,6 +353,209 @@ func registerCreateEvent(server *mcp.Server, mgr *auth.Manager) {
 			Content: []mcp.Content{
 				&mcp.TextContent{Text: fmt.Sprintf("Event created successfully!\n\nID: %s\nLink: %s\n\n%s",
 					created.Id, created.HtmlLink, formatEvent(created, input.Account))},
+			},
+		}, nil, nil
+	})
+}
+
+// --- calendar_update_event ---
+
+type updateEventInput struct {
+	Account     string   `json:"account" jsonschema:"Account name to use"`
+	CalendarID  string   `json:"calendar_id,omitempty" jsonschema:"Calendar ID (default: 'primary')"`
+	EventID     string   `json:"event_id" jsonschema:"Event ID to update"`
+	Summary     string   `json:"summary,omitempty" jsonschema:"New event title (leave empty to keep current)"`
+	Description string   `json:"description,omitempty" jsonschema:"New event description (leave empty to keep current)"`
+	Location    string   `json:"location,omitempty" jsonschema:"New event location (leave empty to keep current)"`
+	StartTime   string   `json:"start_time,omitempty" jsonschema:"New start time in RFC3339 format or date for all-day events (leave empty to keep current)"`
+	EndTime     string   `json:"end_time,omitempty" jsonschema:"New end time in RFC3339 format or date for all-day events (leave empty to keep current)"`
+	TimeZone    string   `json:"time_zone,omitempty" jsonschema:"IANA timezone (e.g. 'America/New_York')"`
+	Attendees   []string `json:"attendees,omitempty" jsonschema:"Replace attendee list with these email addresses. Omit to keep current attendees."`
+}
+
+func registerUpdateEvent(server *mcp.Server, mgr *auth.Manager) {
+	mcp.AddTool(server, &mcp.Tool{
+		Name: "calendar_update_event",
+		Description: `Update an existing calendar event. Only specified fields are changed; omitted fields keep their current values.
+
+To update attendees, provide the full list — it replaces the existing attendees.
+To change times, provide both start_time and end_time.`,
+	}, func(ctx context.Context, req *mcp.CallToolRequest, input updateEventInput) (*mcp.CallToolResult, any, error) {
+		svc, err := newService(ctx, mgr, input.Account)
+		if err != nil {
+			return nil, nil, fmt.Errorf("creating Calendar service: %w", err)
+		}
+
+		calendarID := input.CalendarID
+		if calendarID == "" {
+			calendarID = "primary"
+		}
+
+		// Fetch the existing event so we can apply partial updates.
+		existing, err := svc.Events.Get(calendarID, input.EventID).Do()
+		if err != nil {
+			return nil, nil, fmt.Errorf("getting event: %w", err)
+		}
+
+		if input.Summary != "" {
+			existing.Summary = input.Summary
+		}
+		if input.Description != "" {
+			existing.Description = input.Description
+		}
+		if input.Location != "" {
+			existing.Location = input.Location
+		}
+
+		// Update times if provided.
+		if input.StartTime != "" {
+			if isDateOnly(input.StartTime) {
+				existing.Start = &calendar.EventDateTime{Date: input.StartTime}
+			} else {
+				existing.Start = &calendar.EventDateTime{
+					DateTime: input.StartTime,
+					TimeZone: input.TimeZone,
+				}
+			}
+		}
+		if input.EndTime != "" {
+			if isDateOnly(input.EndTime) {
+				existing.End = &calendar.EventDateTime{Date: input.EndTime}
+			} else {
+				existing.End = &calendar.EventDateTime{
+					DateTime: input.EndTime,
+					TimeZone: input.TimeZone,
+				}
+			}
+		}
+
+		// Replace attendees if provided.
+		if input.Attendees != nil {
+			existing.Attendees = nil
+			for _, email := range input.Attendees {
+				existing.Attendees = append(existing.Attendees, &calendar.EventAttendee{
+					Email: email,
+				})
+			}
+		}
+
+		updated, err := svc.Events.Update(calendarID, input.EventID, existing).Do()
+		if err != nil {
+			return nil, nil, fmt.Errorf("updating event: %w", err)
+		}
+
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{
+				&mcp.TextContent{Text: fmt.Sprintf("Event updated successfully!\n\nID: %s\nLink: %s\n\n%s",
+					updated.Id, updated.HtmlLink, formatEvent(updated, input.Account))},
+			},
+		}, nil, nil
+	})
+}
+
+// --- calendar_delete_event ---
+
+type deleteEventInput struct {
+	Account    string `json:"account" jsonschema:"Account name to use"`
+	CalendarID string `json:"calendar_id,omitempty" jsonschema:"Calendar ID (default: 'primary')"`
+	EventID    string `json:"event_id" jsonschema:"Event ID to delete"`
+}
+
+func registerDeleteEvent(server *mcp.Server, mgr *auth.Manager) {
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "calendar_delete_event",
+		Description: "Delete a calendar event by ID. This permanently removes the event from the calendar.",
+	}, func(ctx context.Context, req *mcp.CallToolRequest, input deleteEventInput) (*mcp.CallToolResult, any, error) {
+		svc, err := newService(ctx, mgr, input.Account)
+		if err != nil {
+			return nil, nil, fmt.Errorf("creating Calendar service: %w", err)
+		}
+
+		calendarID := input.CalendarID
+		if calendarID == "" {
+			calendarID = "primary"
+		}
+
+		if err := svc.Events.Delete(calendarID, input.EventID).Do(); err != nil {
+			return nil, nil, fmt.Errorf("deleting event: %w", err)
+		}
+
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{
+				&mcp.TextContent{Text: fmt.Sprintf("Event %s deleted successfully.", input.EventID)},
+			},
+		}, nil, nil
+	})
+}
+
+// --- calendar_respond_event ---
+
+type respondEventInput struct {
+	Account    string `json:"account" jsonschema:"Account name to use"`
+	CalendarID string `json:"calendar_id,omitempty" jsonschema:"Calendar ID (default: 'primary')"`
+	EventID    string `json:"event_id" jsonschema:"Event ID to respond to"`
+	Response   string `json:"response" jsonschema:"Response status: 'accepted', 'declined', or 'tentative'"`
+}
+
+func registerRespondEvent(server *mcp.Server, mgr *auth.Manager) {
+	mcp.AddTool(server, &mcp.Tool{
+		Name: "calendar_respond_event",
+		Description: `Respond to a calendar event invitation. Sets your attendance status.
+
+Valid responses:
+  - "accepted" — Accept the invitation
+  - "declined" — Decline the invitation
+  - "tentative" — Tentatively accept the invitation`,
+		Annotations: &mcp.ToolAnnotations{},
+	}, func(ctx context.Context, req *mcp.CallToolRequest, input respondEventInput) (*mcp.CallToolResult, any, error) {
+		// Validate response value.
+		switch input.Response {
+		case "accepted", "declined", "tentative":
+		default:
+			return nil, nil, fmt.Errorf("invalid response %q: must be 'accepted', 'declined', or 'tentative'", input.Response)
+		}
+
+		svc, err := newService(ctx, mgr, input.Account)
+		if err != nil {
+			return nil, nil, fmt.Errorf("creating Calendar service: %w", err)
+		}
+
+		calendarID := input.CalendarID
+		if calendarID == "" {
+			calendarID = "primary"
+		}
+
+		// Fetch the event to find our attendee entry.
+		event, err := svc.Events.Get(calendarID, input.EventID).Do()
+		if err != nil {
+			return nil, nil, fmt.Errorf("getting event: %w", err)
+		}
+
+		// Find the attendee entry for the authenticated user (Self: true).
+		found := false
+		for _, a := range event.Attendees {
+			if a.Self {
+				a.ResponseStatus = input.Response
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			return nil, nil, fmt.Errorf("you are not listed as an attendee of this event")
+		}
+
+		updated, err := svc.Events.Patch(calendarID, input.EventID, &calendar.Event{
+			Attendees: event.Attendees,
+		}).Do()
+		if err != nil {
+			return nil, nil, fmt.Errorf("updating response: %w", err)
+		}
+
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{
+				&mcp.TextContent{Text: fmt.Sprintf("Response updated to %q for event %q.\n\n%s",
+					input.Response, updated.Summary, formatEvent(updated, input.Account))},
 			},
 		}, nil, nil
 	})

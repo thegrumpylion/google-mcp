@@ -217,7 +217,9 @@ func newCalendarCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "calendar",
 		Short: "Start the Google Calendar MCP server (stdio)",
-		Long:  "Starts an MCP server over stdio with Calendar tools: calendar_list_events, calendar_get_event, calendar_create_event, calendar_list_calendars, accounts_list.",
+		Long: `Starts an MCP server over stdio with Calendar tools:
+  accounts_list, calendar_list_calendars, calendar_list_events, calendar_get_event,
+  calendar_create_event, calendar_update_event, calendar_delete_event, calendar_respond_event.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			mgr, err := newManager()
 			if err != nil {
