@@ -39,7 +39,7 @@ func newService(ctx context.Context, mgr *auth.Manager, account string) (*drive.
 func registerAccountsList(server *mcp.Server, mgr *auth.Manager) {
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "accounts_list",
-		Description: "List all configured Google accounts",
+		Description: "List all configured Google accounts. Use this to discover available account names.",
 		Annotations: &mcp.ToolAnnotations{
 			ReadOnlyHint: true,
 		},
@@ -72,22 +72,22 @@ func registerAccountsList(server *mcp.Server, mgr *auth.Manager) {
 // --- drive_search ---
 
 type searchInput struct {
-	Account    string `json:"account" jsonschema:"required,description=Account name to use (e.g. 'personal' or 'work')"`
+	Account    string `json:"account" jsonschema:"required,description=Account name (e.g. 'personal'\\, 'work') or 'all' to search all accounts"`
 	Query      string `json:"query" jsonschema:"required,description=Drive search query (e.g. \"name contains 'report'\" or \"mimeType = 'application/pdf'\")"`
-	MaxResults int64  `json:"max_results,omitempty" jsonschema:"description=Maximum number of results (default 10, max 50)"`
+	MaxResults int64  `json:"max_results,omitempty" jsonschema:"description=Maximum number of results per account (default 10\\, max 50)"`
 }
 
 func registerSearch(server *mcp.Server, mgr *auth.Manager) {
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "drive_search",
-		Description: "Search Google Drive files using Drive query syntax. Returns file IDs, names, and metadata.",
+		Description: "Search Google Drive files using Drive query syntax. Set account to 'all' to search across all accounts. Returns file IDs, names, and metadata.",
 		Annotations: &mcp.ToolAnnotations{
 			ReadOnlyHint: true,
 		},
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input searchInput) (*mcp.CallToolResult, any, error) {
-		svc, err := newService(ctx, mgr, input.Account)
+		accounts, err := mgr.ResolveAccounts(input.Account)
 		if err != nil {
-			return nil, nil, fmt.Errorf("creating Drive service: %w", err)
+			return nil, nil, err
 		}
 
 		maxResults := input.MaxResults
@@ -98,26 +98,52 @@ func registerSearch(server *mcp.Server, mgr *auth.Manager) {
 			maxResults = 50
 		}
 
-		resp, err := svc.Files.List().
-			Q(input.Query).
-			PageSize(maxResults).
-			Fields("files(id,name,mimeType,size,modifiedTime,owners,webViewLink)").
-			Do()
-		if err != nil {
-			return nil, nil, fmt.Errorf("searching files: %w", err)
+		var sb strings.Builder
+		multiAccount := len(accounts) > 1
+
+		for _, account := range accounts {
+			svc, err := newService(ctx, mgr, account)
+			if err != nil {
+				if multiAccount {
+					fmt.Fprintf(&sb, "=== Account: %s ===\nError: %v\n\n", account, err)
+					continue
+				}
+				return nil, nil, fmt.Errorf("creating Drive service: %w", err)
+			}
+
+			resp, err := svc.Files.List().
+				Q(input.Query).
+				PageSize(maxResults).
+				Fields("files(id,name,mimeType,size,modifiedTime,owners,webViewLink)").
+				Do()
+			if err != nil {
+				if multiAccount {
+					fmt.Fprintf(&sb, "=== Account: %s ===\nError searching: %v\n\n", account, err)
+					continue
+				}
+				return nil, nil, fmt.Errorf("searching files: %w", err)
+			}
+
+			if multiAccount {
+				fmt.Fprintf(&sb, "=== Account: %s ===\n", account)
+			}
+
+			if len(resp.Files) == 0 {
+				sb.WriteString("No files found.\n\n")
+				continue
+			}
+
+			sb.WriteString(formatFileList(resp.Files, account))
 		}
 
-		if len(resp.Files) == 0 {
-			return &mcp.CallToolResult{
-				Content: []mcp.Content{
-					&mcp.TextContent{Text: "No files found."},
-				},
-			}, nil, nil
+		text := sb.String()
+		if text == "" {
+			text = "No files found."
 		}
 
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{
-				&mcp.TextContent{Text: formatFileList(resp.Files)},
+				&mcp.TextContent{Text: text},
 			},
 		}, nil, nil
 	})
@@ -126,23 +152,23 @@ func registerSearch(server *mcp.Server, mgr *auth.Manager) {
 // --- drive_list ---
 
 type listInput struct {
-	Account    string `json:"account" jsonschema:"required,description=Account name to use"`
+	Account    string `json:"account" jsonschema:"required,description=Account name (e.g. 'personal'\\, 'work') or 'all' to list from all accounts"`
 	FolderID   string `json:"folder_id,omitempty" jsonschema:"description=Folder ID to list contents of (default: root)"`
-	MaxResults int64  `json:"max_results,omitempty" jsonschema:"description=Maximum number of results (default 20, max 100)"`
-	OrderBy    string `json:"order_by,omitempty" jsonschema:"description=Sort order (e.g. 'modifiedTime desc', 'name'). Default: 'modifiedTime desc'"`
+	MaxResults int64  `json:"max_results,omitempty" jsonschema:"description=Maximum number of results per account (default 20\\, max 100)"`
+	OrderBy    string `json:"order_by,omitempty" jsonschema:"description=Sort order (e.g. 'modifiedTime desc'\\, 'name'). Default: 'modifiedTime desc'"`
 }
 
 func registerList(server *mcp.Server, mgr *auth.Manager) {
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "drive_list",
-		Description: "List files in Google Drive, optionally within a specific folder. Returns file IDs, names, and metadata.",
+		Description: "List files in Google Drive, optionally within a specific folder. Set account to 'all' to list from all accounts. Returns file IDs, names, and metadata.",
 		Annotations: &mcp.ToolAnnotations{
 			ReadOnlyHint: true,
 		},
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input listInput) (*mcp.CallToolResult, any, error) {
-		svc, err := newService(ctx, mgr, input.Account)
+		accounts, err := mgr.ResolveAccounts(input.Account)
 		if err != nil {
-			return nil, nil, fmt.Errorf("creating Drive service: %w", err)
+			return nil, nil, err
 		}
 
 		maxResults := input.MaxResults
@@ -158,33 +184,59 @@ func registerList(server *mcp.Server, mgr *auth.Manager) {
 			orderBy = "modifiedTime desc"
 		}
 
-		call := svc.Files.List().
-			PageSize(maxResults).
-			OrderBy(orderBy).
-			Fields("files(id,name,mimeType,size,modifiedTime,owners,webViewLink)")
+		var sb strings.Builder
+		multiAccount := len(accounts) > 1
 
-		if input.FolderID != "" {
-			call = call.Q(fmt.Sprintf("'%s' in parents and trashed = false", input.FolderID))
-		} else {
-			call = call.Q("trashed = false")
+		for _, account := range accounts {
+			svc, err := newService(ctx, mgr, account)
+			if err != nil {
+				if multiAccount {
+					fmt.Fprintf(&sb, "=== Account: %s ===\nError: %v\n\n", account, err)
+					continue
+				}
+				return nil, nil, fmt.Errorf("creating Drive service: %w", err)
+			}
+
+			call := svc.Files.List().
+				PageSize(maxResults).
+				OrderBy(orderBy).
+				Fields("files(id,name,mimeType,size,modifiedTime,owners,webViewLink)")
+
+			if input.FolderID != "" {
+				call = call.Q(fmt.Sprintf("'%s' in parents and trashed = false", input.FolderID))
+			} else {
+				call = call.Q("trashed = false")
+			}
+
+			resp, err := call.Do()
+			if err != nil {
+				if multiAccount {
+					fmt.Fprintf(&sb, "=== Account: %s ===\nError listing: %v\n\n", account, err)
+					continue
+				}
+				return nil, nil, fmt.Errorf("listing files: %w", err)
+			}
+
+			if multiAccount {
+				fmt.Fprintf(&sb, "=== Account: %s ===\n", account)
+			}
+
+			if len(resp.Files) == 0 {
+				sb.WriteString("No files found.\n\n")
+				continue
+			}
+
+			sb.WriteString(formatFileList(resp.Files, account))
 		}
 
-		resp, err := call.Do()
-		if err != nil {
-			return nil, nil, fmt.Errorf("listing files: %w", err)
-		}
-
-		if len(resp.Files) == 0 {
-			return &mcp.CallToolResult{
-				Content: []mcp.Content{
-					&mcp.TextContent{Text: "No files found."},
-				},
-			}, nil, nil
+		text := sb.String()
+		if text == "" {
+			text = "No files found."
 		}
 
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{
-				&mcp.TextContent{Text: formatFileList(resp.Files)},
+				&mcp.TextContent{Text: text},
 			},
 		}, nil, nil
 	})
@@ -259,7 +311,7 @@ func registerGet(server *mcp.Server, mgr *auth.Manager) {
 type readInput struct {
 	Account    string `json:"account" jsonschema:"required,description=Account name to use"`
 	FileID     string `json:"file_id" jsonschema:"required,description=Google Drive file ID"`
-	ExportMIME string `json:"export_mime,omitempty" jsonschema:"description=MIME type to export Google Docs/Sheets/Slides as (e.g. 'text/plain', 'text/csv', 'application/pdf'). Required for Google Workspace files."`
+	ExportMIME string `json:"export_mime,omitempty" jsonschema:"description=MIME type to export Google Docs/Sheets/Slides as (e.g. 'text/plain'\\, 'text/csv'\\, 'application/pdf'). Required for Google Workspace files."`
 }
 
 func registerRead(server *mcp.Server, mgr *auth.Manager) {
@@ -363,11 +415,12 @@ func defaultExportMIME(mimeType string) string {
 }
 
 // formatFileList formats a list of Drive files for display.
-func formatFileList(files []*drive.File) string {
+// The account parameter is included in each file entry for multi-account context.
+func formatFileList(files []*drive.File, account string) string {
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "Found %d files:\n\n", len(files))
 	for _, f := range files {
-		fmt.Fprintf(&sb, "- Name: %s\n  ID: %s\n  Type: %s\n", f.Name, f.Id, f.MimeType)
+		fmt.Fprintf(&sb, "- Name: %s\n  ID: %s\n  Account: %s\n  Type: %s\n", f.Name, f.Id, account, f.MimeType)
 		if f.Size > 0 {
 			fmt.Fprintf(&sb, "  Size: %d bytes\n", f.Size)
 		}

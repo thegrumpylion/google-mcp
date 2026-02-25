@@ -144,6 +144,30 @@ func (m *Manager) oauthConfig(scopes []string) (*oauth2.Config, error) {
 	return cfg, nil
 }
 
+// ResolveAccounts resolves an account parameter to a list of account names.
+// If account is "all", it returns all configured account names.
+// Otherwise it validates the account exists and returns it as a single-element slice.
+func (m *Manager) ResolveAccounts(account string) ([]string, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	if account == "all" {
+		if len(m.config.Accounts) == 0 {
+			return nil, fmt.Errorf("no accounts configured; run 'google-mcp auth add <name>' first")
+		}
+		names := make([]string, 0, len(m.config.Accounts))
+		for name := range m.config.Accounts {
+			names = append(names, name)
+		}
+		return names, nil
+	}
+
+	if _, ok := m.config.Accounts[account]; !ok {
+		return nil, fmt.Errorf("account %q not found; run 'google-mcp auth add %s' first", account, account)
+	}
+	return []string{account}, nil
+}
+
 // ListAccounts returns all configured account names and their email addresses.
 func (m *Manager) ListAccounts() map[string]string {
 	m.mu.RLock()

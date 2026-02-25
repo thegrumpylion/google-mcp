@@ -40,7 +40,7 @@ func newService(ctx context.Context, mgr *auth.Manager, account string) (*gmail.
 func registerAccountsList(server *mcp.Server, mgr *auth.Manager) {
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "accounts_list",
-		Description: "List all configured Google accounts",
+		Description: "List all configured Google accounts. Use this to discover available account names.",
 		Annotations: &mcp.ToolAnnotations{
 			ReadOnlyHint: true,
 		},
@@ -73,22 +73,22 @@ func registerAccountsList(server *mcp.Server, mgr *auth.Manager) {
 // --- gmail_search ---
 
 type searchInput struct {
-	Account    string `json:"account" jsonschema:"required,description=Account name to use (e.g. 'personal' or 'work')"`
+	Account    string `json:"account" jsonschema:"required,description=Account name (e.g. 'personal'\\, 'work') or 'all' to search all accounts"`
 	Query      string `json:"query" jsonschema:"required,description=Gmail search query (same syntax as Gmail search bar)"`
-	MaxResults int64  `json:"max_results,omitempty" jsonschema:"description=Maximum number of results to return (default 10, max 50)"`
+	MaxResults int64  `json:"max_results,omitempty" jsonschema:"description=Maximum number of results per account (default 10\\, max 50)"`
 }
 
 func registerSearch(server *mcp.Server, mgr *auth.Manager) {
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "gmail_search",
-		Description: "Search Gmail messages using Gmail query syntax. Returns message IDs and snippets. Use gmail_read to get full message content.",
+		Description: "Search Gmail messages using Gmail query syntax. Set account to 'all' to search across all accounts. Returns message IDs and snippets. Use gmail_read to get full message content.",
 		Annotations: &mcp.ToolAnnotations{
 			ReadOnlyHint: true,
 		},
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input searchInput) (*mcp.CallToolResult, any, error) {
-		svc, err := newService(ctx, mgr, input.Account)
+		accounts, err := mgr.ResolveAccounts(input.Account)
 		if err != nil {
-			return nil, nil, fmt.Errorf("creating Gmail service: %w", err)
+			return nil, nil, err
 		}
 
 		maxResults := input.MaxResults
@@ -99,37 +99,54 @@ func registerSearch(server *mcp.Server, mgr *auth.Manager) {
 			maxResults = 50
 		}
 
-		resp, err := svc.Users.Messages.List("me").Q(input.Query).MaxResults(maxResults).Do()
-		if err != nil {
-			return nil, nil, fmt.Errorf("searching messages: %w", err)
-		}
-
-		if len(resp.Messages) == 0 {
-			return &mcp.CallToolResult{
-				Content: []mcp.Content{
-					&mcp.TextContent{Text: "No messages found."},
-				},
-			}, nil, nil
-		}
-
 		var sb strings.Builder
-		fmt.Fprintf(&sb, "Found %d messages (estimated total: %d):\n\n", len(resp.Messages), resp.ResultSizeEstimate)
+		multiAccount := len(accounts) > 1
 
-		// Fetch minimal details for each message.
-		for _, msg := range resp.Messages {
-			detail, err := svc.Users.Messages.Get("me", msg.Id).Format("metadata").MetadataHeaders("From", "Subject", "Date").Do()
+		for _, account := range accounts {
+			svc, err := newService(ctx, mgr, account)
 			if err != nil {
-				fmt.Fprintf(&sb, "- ID: %s (error fetching details: %v)\n", msg.Id, err)
+				if multiAccount {
+					fmt.Fprintf(&sb, "=== Account: %s ===\nError: %v\n\n", account, err)
+					continue
+				}
+				return nil, nil, fmt.Errorf("creating Gmail service: %w", err)
+			}
+
+			resp, err := svc.Users.Messages.List("me").Q(input.Query).MaxResults(maxResults).Do()
+			if err != nil {
+				if multiAccount {
+					fmt.Fprintf(&sb, "=== Account: %s ===\nError searching: %v\n\n", account, err)
+					continue
+				}
+				return nil, nil, fmt.Errorf("searching messages: %w", err)
+			}
+
+			if multiAccount {
+				fmt.Fprintf(&sb, "=== Account: %s ===\n", account)
+			}
+
+			if len(resp.Messages) == 0 {
+				sb.WriteString("No messages found.\n\n")
 				continue
 			}
-			headers := make(map[string]string)
-			if detail.Payload != nil {
-				for _, h := range detail.Payload.Headers {
-					headers[h.Name] = h.Value
+
+			fmt.Fprintf(&sb, "Found %d messages (estimated total: %d):\n\n", len(resp.Messages), resp.ResultSizeEstimate)
+
+			for _, msg := range resp.Messages {
+				detail, err := svc.Users.Messages.Get("me", msg.Id).Format("metadata").MetadataHeaders("From", "Subject", "Date").Do()
+				if err != nil {
+					fmt.Fprintf(&sb, "- ID: %s (error fetching details: %v)\n", msg.Id, err)
+					continue
 				}
+				headers := make(map[string]string)
+				if detail.Payload != nil {
+					for _, h := range detail.Payload.Headers {
+						headers[h.Name] = h.Value
+					}
+				}
+				fmt.Fprintf(&sb, "- ID: %s\n  Account: %s\n  From: %s\n  Subject: %s\n  Date: %s\n  Snippet: %s\n\n",
+					msg.Id, account, headers["From"], headers["Subject"], headers["Date"], detail.Snippet)
 			}
-			fmt.Fprintf(&sb, "- ID: %s\n  From: %s\n  Subject: %s\n  Date: %s\n  Snippet: %s\n\n",
-				msg.Id, headers["From"], headers["Subject"], headers["Date"], detail.Snippet)
 		}
 
 		return &mcp.CallToolResult{
@@ -244,7 +261,7 @@ func extractBody(part *gmail.MessagePart) string {
 // --- gmail_send ---
 
 type sendInput struct {
-	Account string `json:"account" jsonschema:"required,description=Account name to use"`
+	Account string `json:"account" jsonschema:"required,description=Account name to send from"`
 	To      string `json:"to" jsonschema:"required,description=Recipient email address"`
 	Subject string `json:"subject" jsonschema:"required,description=Email subject line"`
 	Body    string `json:"body" jsonschema:"required,description=Email body (plain text)"`
@@ -321,31 +338,52 @@ func mime2047Encode(s string) string {
 // --- gmail_list_labels ---
 
 type listLabelsInput struct {
-	Account string `json:"account" jsonschema:"required,description=Account name to use"`
+	Account string `json:"account" jsonschema:"required,description=Account name (e.g. 'personal'\\, 'work') or 'all' to list labels from all accounts"`
 }
 
 func registerListLabels(server *mcp.Server, mgr *auth.Manager) {
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "gmail_list_labels",
-		Description: "List all Gmail labels for an account. Useful for filtering searches.",
+		Description: "List all Gmail labels for an account. Set account to 'all' to list labels from all accounts. Useful for filtering searches.",
 		Annotations: &mcp.ToolAnnotations{
 			ReadOnlyHint: true,
 		},
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input listLabelsInput) (*mcp.CallToolResult, any, error) {
-		svc, err := newService(ctx, mgr, input.Account)
+		accounts, err := mgr.ResolveAccounts(input.Account)
 		if err != nil {
-			return nil, nil, fmt.Errorf("creating Gmail service: %w", err)
-		}
-
-		resp, err := svc.Users.Labels.List("me").Do()
-		if err != nil {
-			return nil, nil, fmt.Errorf("listing labels: %w", err)
+			return nil, nil, err
 		}
 
 		var sb strings.Builder
-		sb.WriteString("Gmail labels:\n")
-		for _, label := range resp.Labels {
-			fmt.Fprintf(&sb, "  - %s (ID: %s, type: %s)\n", label.Name, label.Id, label.Type)
+		multiAccount := len(accounts) > 1
+
+		for _, account := range accounts {
+			svc, err := newService(ctx, mgr, account)
+			if err != nil {
+				if multiAccount {
+					fmt.Fprintf(&sb, "=== Account: %s ===\nError: %v\n\n", account, err)
+					continue
+				}
+				return nil, nil, fmt.Errorf("creating Gmail service: %w", err)
+			}
+
+			resp, err := svc.Users.Labels.List("me").Do()
+			if err != nil {
+				if multiAccount {
+					fmt.Fprintf(&sb, "=== Account: %s ===\nError listing labels: %v\n\n", account, err)
+					continue
+				}
+				return nil, nil, fmt.Errorf("listing labels: %w", err)
+			}
+
+			if multiAccount {
+				fmt.Fprintf(&sb, "=== Account: %s ===\n", account)
+			}
+			sb.WriteString("Gmail labels:\n")
+			for _, label := range resp.Labels {
+				fmt.Fprintf(&sb, "  - %s (ID: %s, type: %s)\n", label.Name, label.Id, label.Type)
+			}
+			sb.WriteString("\n")
 		}
 
 		return &mcp.CallToolResult{

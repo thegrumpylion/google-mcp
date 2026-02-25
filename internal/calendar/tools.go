@@ -40,7 +40,7 @@ func newService(ctx context.Context, mgr *auth.Manager, account string) (*calend
 func registerAccountsList(server *mcp.Server, mgr *auth.Manager) {
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "accounts_list",
-		Description: "List all configured Google accounts",
+		Description: "List all configured Google accounts. Use this to discover available account names.",
 		Annotations: &mcp.ToolAnnotations{
 			ReadOnlyHint: true,
 		},
@@ -73,38 +73,59 @@ func registerAccountsList(server *mcp.Server, mgr *auth.Manager) {
 // --- calendar_list_calendars ---
 
 type listCalendarsInput struct {
-	Account string `json:"account" jsonschema:"required,description=Account name to use (e.g. 'personal' or 'work')"`
+	Account string `json:"account" jsonschema:"required,description=Account name (e.g. 'personal'\\, 'work') or 'all' to list from all accounts"`
 }
 
 func registerListCalendars(server *mcp.Server, mgr *auth.Manager) {
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "calendar_list_calendars",
-		Description: "List all calendars accessible by the account. Returns calendar IDs and names.",
+		Description: "List all calendars accessible by the account. Set account to 'all' to list calendars from all accounts. Returns calendar IDs and names.",
 		Annotations: &mcp.ToolAnnotations{
 			ReadOnlyHint: true,
 		},
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input listCalendarsInput) (*mcp.CallToolResult, any, error) {
-		svc, err := newService(ctx, mgr, input.Account)
+		accounts, err := mgr.ResolveAccounts(input.Account)
 		if err != nil {
-			return nil, nil, fmt.Errorf("creating Calendar service: %w", err)
-		}
-
-		resp, err := svc.CalendarList.List().Do()
-		if err != nil {
-			return nil, nil, fmt.Errorf("listing calendars: %w", err)
+			return nil, nil, err
 		}
 
 		var sb strings.Builder
-		fmt.Fprintf(&sb, "Found %d calendars:\n\n", len(resp.Items))
-		for _, cal := range resp.Items {
-			fmt.Fprintf(&sb, "- %s\n  ID: %s\n  Access: %s\n", cal.Summary, cal.Id, cal.AccessRole)
-			if cal.Description != "" {
-				fmt.Fprintf(&sb, "  Description: %s\n", cal.Description)
+		multiAccount := len(accounts) > 1
+
+		for _, account := range accounts {
+			svc, err := newService(ctx, mgr, account)
+			if err != nil {
+				if multiAccount {
+					fmt.Fprintf(&sb, "=== Account: %s ===\nError: %v\n\n", account, err)
+					continue
+				}
+				return nil, nil, fmt.Errorf("creating Calendar service: %w", err)
 			}
-			if cal.Primary {
-				sb.WriteString("  (Primary)\n")
+
+			resp, err := svc.CalendarList.List().Do()
+			if err != nil {
+				if multiAccount {
+					fmt.Fprintf(&sb, "=== Account: %s ===\nError listing calendars: %v\n\n", account, err)
+					continue
+				}
+				return nil, nil, fmt.Errorf("listing calendars: %w", err)
 			}
-			sb.WriteString("\n")
+
+			if multiAccount {
+				fmt.Fprintf(&sb, "=== Account: %s ===\n", account)
+			}
+
+			fmt.Fprintf(&sb, "Found %d calendars:\n\n", len(resp.Items))
+			for _, cal := range resp.Items {
+				fmt.Fprintf(&sb, "- %s\n  ID: %s\n  Account: %s\n  Access: %s\n", cal.Summary, cal.Id, account, cal.AccessRole)
+				if cal.Description != "" {
+					fmt.Fprintf(&sb, "  Description: %s\n", cal.Description)
+				}
+				if cal.Primary {
+					sb.WriteString("  (Primary)\n")
+				}
+				sb.WriteString("\n")
+			}
 		}
 
 		return &mcp.CallToolResult{
@@ -118,25 +139,25 @@ func registerListCalendars(server *mcp.Server, mgr *auth.Manager) {
 // --- calendar_list_events ---
 
 type listEventsInput struct {
-	Account    string `json:"account" jsonschema:"required,description=Account name to use"`
+	Account    string `json:"account" jsonschema:"required,description=Account name (e.g. 'personal'\\, 'work') or 'all' to list from all accounts"`
 	CalendarID string `json:"calendar_id,omitempty" jsonschema:"description=Calendar ID (default: 'primary')"`
 	TimeMin    string `json:"time_min,omitempty" jsonschema:"description=Start of time range in RFC3339 format (e.g. '2024-01-15T00:00:00Z'). Default: now"`
 	TimeMax    string `json:"time_max,omitempty" jsonschema:"description=End of time range in RFC3339 format. Default: 7 days from now"`
 	Query      string `json:"query,omitempty" jsonschema:"description=Free text search query"`
-	MaxResults int64  `json:"max_results,omitempty" jsonschema:"description=Maximum number of events (default 20, max 100)"`
+	MaxResults int64  `json:"max_results,omitempty" jsonschema:"description=Maximum number of events per account (default 20\\, max 100)"`
 }
 
 func registerListEvents(server *mcp.Server, mgr *auth.Manager) {
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "calendar_list_events",
-		Description: "List events from a Google Calendar within a time range. Defaults to upcoming events in the next 7 days.",
+		Description: "List events from a Google Calendar within a time range. Set account to 'all' to list events from all accounts. Defaults to upcoming events in the next 7 days.",
 		Annotations: &mcp.ToolAnnotations{
 			ReadOnlyHint: true,
 		},
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input listEventsInput) (*mcp.CallToolResult, any, error) {
-		svc, err := newService(ctx, mgr, input.Account)
+		accounts, err := mgr.ResolveAccounts(input.Account)
 		if err != nil {
-			return nil, nil, fmt.Errorf("creating Calendar service: %w", err)
+			return nil, nil, err
 		}
 
 		calendarID := input.CalendarID
@@ -162,40 +183,63 @@ func registerListEvents(server *mcp.Server, mgr *auth.Manager) {
 			maxResults = 100
 		}
 
-		call := svc.Events.List(calendarID).
-			TimeMin(timeMin).
-			TimeMax(timeMax).
-			MaxResults(maxResults).
-			SingleEvents(true).
-			OrderBy("startTime")
-
-		if input.Query != "" {
-			call = call.Q(input.Query)
-		}
-
-		resp, err := call.Do()
-		if err != nil {
-			return nil, nil, fmt.Errorf("listing events: %w", err)
-		}
-
-		if len(resp.Items) == 0 {
-			return &mcp.CallToolResult{
-				Content: []mcp.Content{
-					&mcp.TextContent{Text: "No events found in the specified time range."},
-				},
-			}, nil, nil
-		}
-
 		var sb strings.Builder
-		fmt.Fprintf(&sb, "Found %d events:\n\n", len(resp.Items))
-		for _, event := range resp.Items {
-			sb.WriteString(formatEvent(event))
-			sb.WriteString("\n")
+		multiAccount := len(accounts) > 1
+
+		for _, account := range accounts {
+			svc, err := newService(ctx, mgr, account)
+			if err != nil {
+				if multiAccount {
+					fmt.Fprintf(&sb, "=== Account: %s ===\nError: %v\n\n", account, err)
+					continue
+				}
+				return nil, nil, fmt.Errorf("creating Calendar service: %w", err)
+			}
+
+			call := svc.Events.List(calendarID).
+				TimeMin(timeMin).
+				TimeMax(timeMax).
+				MaxResults(maxResults).
+				SingleEvents(true).
+				OrderBy("startTime")
+
+			if input.Query != "" {
+				call = call.Q(input.Query)
+			}
+
+			resp, err := call.Do()
+			if err != nil {
+				if multiAccount {
+					fmt.Fprintf(&sb, "=== Account: %s ===\nError listing events: %v\n\n", account, err)
+					continue
+				}
+				return nil, nil, fmt.Errorf("listing events: %w", err)
+			}
+
+			if multiAccount {
+				fmt.Fprintf(&sb, "=== Account: %s ===\n", account)
+			}
+
+			if len(resp.Items) == 0 {
+				sb.WriteString("No events found in the specified time range.\n\n")
+				continue
+			}
+
+			fmt.Fprintf(&sb, "Found %d events:\n\n", len(resp.Items))
+			for _, event := range resp.Items {
+				sb.WriteString(formatEvent(event, account))
+				sb.WriteString("\n")
+			}
+		}
+
+		text := sb.String()
+		if text == "" {
+			text = "No events found in the specified time range."
 		}
 
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{
-				&mcp.TextContent{Text: sb.String()},
+				&mcp.TextContent{Text: text},
 			},
 		}, nil, nil
 	})
@@ -305,7 +349,7 @@ func registerCreateEvent(server *mcp.Server, mgr *auth.Manager) {
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{
 				&mcp.TextContent{Text: fmt.Sprintf("Event created successfully!\n\nID: %s\nLink: %s\n\n%s",
-					created.Id, created.HtmlLink, formatEvent(created))},
+					created.Id, created.HtmlLink, formatEvent(created, input.Account))},
 			},
 		}, nil, nil
 	})
@@ -318,10 +362,11 @@ func isDateOnly(s string) bool {
 }
 
 // formatEvent formats an event for brief display.
-func formatEvent(event *calendar.Event) string {
+func formatEvent(event *calendar.Event, account string) string {
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "- %s\n", event.Summary)
 	fmt.Fprintf(&sb, "  ID: %s\n", event.Id)
+	fmt.Fprintf(&sb, "  Account: %s\n", account)
 
 	if event.Start != nil {
 		if event.Start.DateTime != "" {
