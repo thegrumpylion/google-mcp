@@ -1,0 +1,32 @@
+version: "3"
+
+tasks:
+  build:
+    desc: Build the binary
+    cmds:
+      - go build -o google-mcp .
+
+  run:
+    desc: Run the binary
+    cmds:
+      - go run .
+
+  test:
+    desc: Run tests
+    cmds:
+      - go test -race ./...
+
+  lint:
+    desc: Run linter
+    cmds:
+      - golangci-lint run ./...
+
+  clean:
+    desc: Clean build artifacts
+    cmds:
+      - rm -f google-mcp
+
+  tidy:
+    desc: Tidy go modules
+    cmds:
+      - go mod tidy
