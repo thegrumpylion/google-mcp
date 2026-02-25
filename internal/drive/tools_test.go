@@ -1,8 +1,10 @@
 package drive
 
 import (
+	"context"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 
@@ -133,5 +135,117 @@ func TestAccountScopes(t *testing.T) {
 	scopes := AccountScopes()
 	if len(scopes) == 0 {
 		t.Error("AccountScopes() returned empty slice")
+	}
+}
+
+func newTestServer(t *testing.T) *mcp.Server {
+	t.Helper()
+	mgr := newTestManager(t)
+	server := mcp.NewServer(&mcp.Implementation{Name: "test-drive", Version: "test"}, nil)
+	RegisterTools(server, mgr)
+	return server
+}
+
+func connect(t *testing.T, server *mcp.Server) *mcp.ClientSession {
+	t.Helper()
+	ctx := context.Background()
+	serverTransport, clientTransport := mcp.NewInMemoryTransports()
+	serverSession, err := server.Connect(ctx, serverTransport, nil)
+	if err != nil {
+		t.Fatalf("server.Connect: %v", err)
+	}
+	t.Cleanup(func() { serverSession.Close() })
+
+	client := mcp.NewClient(&mcp.Implementation{Name: "test-client", Version: "test"}, nil)
+	session, err := client.Connect(ctx, clientTransport, nil)
+	if err != nil {
+		t.Fatalf("client.Connect: %v", err)
+	}
+	t.Cleanup(func() { session.Close() })
+	return session
+}
+
+func listTools(t *testing.T, server *mcp.Server) []*mcp.Tool {
+	t.Helper()
+	ctx := context.Background()
+	session := connect(t, server)
+	res, err := session.ListTools(ctx, nil)
+	if err != nil {
+		t.Fatalf("ListTools: %v", err)
+	}
+	return res.Tools
+}
+
+func TestToolNames(t *testing.T) {
+	server := newTestServer(t)
+	tools := listTools(t, server)
+	got := make([]string, 0, len(tools))
+	for _, tool := range tools {
+		got = append(got, tool.Name)
+	}
+	sort.Strings(got)
+
+	want := []string{
+		"accounts_list",
+		"copy_file",
+		"create_folder",
+		"delete_file",
+		"get_file",
+		"list_files",
+		"move_file",
+		"read_file",
+		"search_files",
+		"share_file",
+		"update_file",
+		"upload_file",
+	}
+
+	if len(got) != len(want) {
+		t.Fatalf("got %d tools, want %d\ngot:  %v\nwant: %v", len(got), len(want), got, want)
+	}
+
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("tool[%d] = %q, want %q", i, got[i], want[i])
+		}
+	}
+}
+
+func TestToolAnnotations(t *testing.T) {
+	server := newTestServer(t)
+	tools := listTools(t, server)
+
+	toolMap := make(map[string]*mcp.Tool)
+	for _, tool := range tools {
+		toolMap[tool.Name] = tool
+	}
+
+	readOnly := []string{
+		"accounts_list", "search_files", "list_files", "get_file", "read_file",
+	}
+	for _, name := range readOnly {
+		tool := toolMap[name]
+		if tool == nil {
+			t.Errorf("tool %q not found", name)
+			continue
+		}
+		if tool.Annotations == nil || !tool.Annotations.ReadOnlyHint {
+			t.Errorf("tool %q should have ReadOnlyHint=true", name)
+		}
+	}
+
+	mutations := []string{
+		"upload_file", "update_file", "delete_file",
+		"create_folder", "move_file", "copy_file", "share_file",
+	}
+	for _, name := range mutations {
+		tool := toolMap[name]
+		if tool == nil {
+			t.Errorf("tool %q not found", name)
+			continue
+		}
+		if tool.Annotations != nil && tool.Annotations.ReadOnlyHint {
+			t.Errorf("mutation tool %q should not have ReadOnlyHint=true", name)
+		}
 	}
 }

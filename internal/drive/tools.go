@@ -21,7 +21,7 @@ var Scopes = []string{
 
 // RegisterTools registers all Drive MCP tools on the given server.
 func RegisterTools(server *mcp.Server, mgr *auth.Manager) {
-	registerAccountsList(server, mgr)
+	auth.RegisterAccountsListTool(server, mgr)
 	registerSearch(server, mgr)
 	registerList(server, mgr)
 	registerGet(server, mgr)
@@ -43,52 +43,17 @@ func newService(ctx context.Context, mgr *auth.Manager, account string) (*drive.
 	return drive.NewService(ctx, opt)
 }
 
-// --- accounts_list ---
-
-func registerAccountsList(server *mcp.Server, mgr *auth.Manager) {
-	mcp.AddTool(server, &mcp.Tool{
-		Name:        "accounts_list",
-		Description: "List all configured Google accounts. Use this to discover available account names.",
-		Annotations: &mcp.ToolAnnotations{
-			ReadOnlyHint: true,
-		},
-	}, func(ctx context.Context, req *mcp.CallToolRequest, _ any) (*mcp.CallToolResult, any, error) {
-		accounts := mgr.ListAccounts()
-		if len(accounts) == 0 {
-			return &mcp.CallToolResult{
-				Content: []mcp.Content{
-					&mcp.TextContent{Text: "No accounts configured. Run 'google-mcp auth add <name>' to add one."},
-				},
-			}, nil, nil
-		}
-		var sb strings.Builder
-		sb.WriteString("Configured accounts:\n")
-		for name, email := range accounts {
-			if email != "" {
-				fmt.Fprintf(&sb, "  - %s (%s)\n", name, email)
-			} else {
-				fmt.Fprintf(&sb, "  - %s\n", name)
-			}
-		}
-		return &mcp.CallToolResult{
-			Content: []mcp.Content{
-				&mcp.TextContent{Text: sb.String()},
-			},
-		}, nil, nil
-	})
-}
-
 // --- drive_search ---
 
 type searchInput struct {
-	Account    string `json:"account" jsonschema:"Account name (e.g. 'personal', 'work') or 'all' to search all accounts"`
+	Account    string `json:"account" jsonschema:"Account name or 'all' for all accounts"`
 	Query      string `json:"query" jsonschema:"Drive search query (e.g. \"name contains 'report'\" or \"mimeType = 'application/pdf'\")"`
 	MaxResults int64  `json:"max_results,omitempty" jsonschema:"Maximum number of results per account (default 10, max 50)"`
 }
 
 func registerSearch(server *mcp.Server, mgr *auth.Manager) {
 	mcp.AddTool(server, &mcp.Tool{
-		Name:        "search",
+		Name:        "search_files",
 		Description: "Search Google Drive files using Drive query syntax. Set account to 'all' to search across all accounts. Returns file IDs, names, and metadata.",
 		Annotations: &mcp.ToolAnnotations{
 			ReadOnlyHint: true,
@@ -161,7 +126,7 @@ func registerSearch(server *mcp.Server, mgr *auth.Manager) {
 // --- drive_list ---
 
 type listInput struct {
-	Account    string `json:"account" jsonschema:"Account name (e.g. 'personal', 'work') or 'all' to list from all accounts"`
+	Account    string `json:"account" jsonschema:"Account name or 'all' for all accounts"`
 	FolderID   string `json:"folder_id,omitempty" jsonschema:"Folder ID to list contents of (default: root)"`
 	MaxResults int64  `json:"max_results,omitempty" jsonschema:"Maximum number of results per account (default 20, max 100)"`
 	OrderBy    string `json:"order_by,omitempty" jsonschema:"Sort order (e.g. 'modifiedTime desc', 'name'). Default: 'modifiedTime desc'"`
@@ -169,7 +134,7 @@ type listInput struct {
 
 func registerList(server *mcp.Server, mgr *auth.Manager) {
 	mcp.AddTool(server, &mcp.Tool{
-		Name:        "list",
+		Name:        "list_files",
 		Description: "List files in Google Drive, optionally within a specific folder. Set account to 'all' to list from all accounts. Returns file IDs, names, and metadata.",
 		Annotations: &mcp.ToolAnnotations{
 			ReadOnlyHint: true,
@@ -254,13 +219,13 @@ func registerList(server *mcp.Server, mgr *auth.Manager) {
 // --- drive_get ---
 
 type getInput struct {
-	Account string `json:"account" jsonschema:"Account name to use"`
+	Account string `json:"account" jsonschema:"Account name"`
 	FileID  string `json:"file_id" jsonschema:"Google Drive file ID"`
 }
 
 func registerGet(server *mcp.Server, mgr *auth.Manager) {
 	mcp.AddTool(server, &mcp.Tool{
-		Name:        "get",
+		Name:        "get_file",
 		Description: "Get metadata for a specific Google Drive file by ID.",
 		Annotations: &mcp.ToolAnnotations{
 			ReadOnlyHint: true,
@@ -280,7 +245,7 @@ func registerGet(server *mcp.Server, mgr *auth.Manager) {
 
 		var sb strings.Builder
 		fmt.Fprintf(&sb, "Name: %s\n", file.Name)
-		fmt.Fprintf(&sb, "ID: %s\n", file.Id)
+		fmt.Fprintf(&sb, "File ID: %s\n", file.Id)
 		fmt.Fprintf(&sb, "MIME Type: %s\n", file.MimeType)
 		if file.Size > 0 {
 			fmt.Fprintf(&sb, "Size: %d bytes\n", file.Size)
@@ -318,15 +283,15 @@ func registerGet(server *mcp.Server, mgr *auth.Manager) {
 // --- drive_read ---
 
 type readInput struct {
-	Account    string `json:"account" jsonschema:"Account name to use"`
-	FileID     string `json:"file_id" jsonschema:"Google Drive file ID"`
-	ExportMIME string `json:"export_mime,omitempty" jsonschema:"MIME type to export Google Docs/Sheets/Slides as (e.g. 'text/plain', 'text/csv', 'application/pdf'). Required for Google Workspace files."`
+	Account        string `json:"account" jsonschema:"Account name"`
+	FileID         string `json:"file_id" jsonschema:"Google Drive file ID"`
+	ExportMIMEType string `json:"export_mime_type,omitempty" jsonschema:"MIME type to export Google Docs/Sheets/Slides as (e.g. 'text/plain', 'text/csv', 'application/pdf'). Required for Google Workspace files."`
 }
 
 func registerRead(server *mcp.Server, mgr *auth.Manager) {
 	mcp.AddTool(server, &mcp.Tool{
-		Name:        "read",
-		Description: "Read/download the content of a Google Drive file. For Google Docs/Sheets/Slides, specify export_mime to choose the export format (e.g. 'text/plain'). Returns text content directly for text files, or base64 for binary files.",
+		Name:        "read_file",
+		Description: "Read/download the content of a Google Drive file. For Google Docs/Sheets/Slides, specify export_mime_type to choose the export format (e.g. 'text/plain'). Returns text content directly for text files, or base64 for binary files. Content is truncated at 512 KB for large files.",
 		Annotations: &mcp.ToolAnnotations{
 			ReadOnlyHint: true,
 		},
@@ -346,7 +311,7 @@ func registerRead(server *mcp.Server, mgr *auth.Manager) {
 
 		if isGoogleWorkspaceFile(file.MimeType) {
 			// Google Workspace files must be exported.
-			exportMIME := input.ExportMIME
+			exportMIME := input.ExportMIMEType
 			if exportMIME == "" {
 				exportMIME = defaultExportMIME(file.MimeType)
 			}
@@ -394,7 +359,7 @@ func registerRead(server *mcp.Server, mgr *auth.Manager) {
 // --- drive_upload ---
 
 type uploadInput struct {
-	Account  string `json:"account" jsonschema:"Account name to use"`
+	Account  string `json:"account" jsonschema:"Account name"`
 	Name     string `json:"name" jsonschema:"File name (e.g. 'report.txt')"`
 	Content  string `json:"content" jsonschema:"File content as text, or base64-encoded binary data"`
 	MIMEType string `json:"mime_type,omitempty" jsonschema:"MIME type of the file (e.g. 'text/plain', 'application/pdf'). Auto-detected if omitted."`
@@ -404,7 +369,10 @@ type uploadInput struct {
 
 func registerUpload(server *mcp.Server, mgr *auth.Manager) {
 	mcp.AddTool(server, &mcp.Tool{
-		Name: "upload",
+		Name: "upload_file",
+		Annotations: &mcp.ToolAnnotations{
+			DestructiveHint: auth.BoolPtr(false),
+		},
 		Description: `Upload a new file to Google Drive. Provide content as plain text or base64-encoded binary.
 
 For text files, just pass the content directly. For binary files, base64-encode the content and set base64=true.`,
@@ -440,9 +408,9 @@ For text files, just pass the content directly. For binary files, base64-encode 
 		}
 
 		var sb strings.Builder
-		fmt.Fprintf(&sb, "File uploaded successfully!\n\n")
+		fmt.Fprintf(&sb, "File uploaded.\n\n")
 		fmt.Fprintf(&sb, "Name: %s\n", created.Name)
-		fmt.Fprintf(&sb, "ID: %s\n", created.Id)
+		fmt.Fprintf(&sb, "File ID: %s\n", created.Id)
 		fmt.Fprintf(&sb, "MIME Type: %s\n", created.MimeType)
 		if created.Size > 0 {
 			fmt.Fprintf(&sb, "Size: %d bytes\n", created.Size)
@@ -462,7 +430,7 @@ For text files, just pass the content directly. For binary files, base64-encode 
 // --- drive_update ---
 
 type updateInput struct {
-	Account     string `json:"account" jsonschema:"Account name to use"`
+	Account     string `json:"account" jsonschema:"Account name"`
 	FileID      string `json:"file_id" jsonschema:"Google Drive file ID to update"`
 	Name        string `json:"name,omitempty" jsonschema:"New file name (leave empty to keep current)"`
 	Description string `json:"description,omitempty" jsonschema:"New file description (leave empty to keep current)"`
@@ -471,7 +439,10 @@ type updateInput struct {
 
 func registerUpdate(server *mcp.Server, mgr *auth.Manager) {
 	mcp.AddTool(server, &mcp.Tool{
-		Name:        "update",
+		Name: "update_file",
+		Annotations: &mcp.ToolAnnotations{
+			IdempotentHint: true,
+		},
 		Description: "Update file metadata on Google Drive (rename, change description, change MIME type). Only specified fields are changed.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input updateInput) (*mcp.CallToolResult, any, error) {
 		svc, err := newService(ctx, mgr, input.Account)
@@ -497,9 +468,9 @@ func registerUpdate(server *mcp.Server, mgr *auth.Manager) {
 		}
 
 		var sb strings.Builder
-		fmt.Fprintf(&sb, "File updated successfully!\n\n")
+		fmt.Fprintf(&sb, "File updated.\n\n")
 		fmt.Fprintf(&sb, "Name: %s\n", updated.Name)
-		fmt.Fprintf(&sb, "ID: %s\n", updated.Id)
+		fmt.Fprintf(&sb, "File ID: %s\n", updated.Id)
 		fmt.Fprintf(&sb, "MIME Type: %s\n", updated.MimeType)
 		if updated.Description != "" {
 			fmt.Fprintf(&sb, "Description: %s\n", updated.Description)
@@ -519,14 +490,15 @@ func registerUpdate(server *mcp.Server, mgr *auth.Manager) {
 // --- drive_delete ---
 
 type deleteInput struct {
-	Account     string `json:"account" jsonschema:"Account name to use"`
+	Account     string `json:"account" jsonschema:"Account name"`
 	FileID      string `json:"file_id" jsonschema:"Google Drive file ID to delete"`
 	Permanently bool   `json:"permanently,omitempty" jsonschema:"If true, permanently delete instead of moving to trash (default: false, moves to trash)"`
 }
 
 func registerDelete(server *mcp.Server, mgr *auth.Manager) {
 	mcp.AddTool(server, &mcp.Tool{
-		Name: "delete",
+		Name:        "delete_file",
+		Annotations: &mcp.ToolAnnotations{},
 		Description: `Delete a file from Google Drive. By default, moves the file to trash.
 
 Set permanently=true to permanently delete the file (cannot be undone).`,
@@ -567,14 +539,17 @@ Set permanently=true to permanently delete the file (cannot be undone).`,
 // --- drive_create_folder ---
 
 type createFolderInput struct {
-	Account  string `json:"account" jsonschema:"Account name to use"`
+	Account  string `json:"account" jsonschema:"Account name"`
 	Name     string `json:"name" jsonschema:"Folder name"`
-	ParentID string `json:"parent_id,omitempty" jsonschema:"Parent folder ID (default: root)"`
+	FolderID string `json:"folder_id,omitempty" jsonschema:"Parent folder ID (default: root)"`
 }
 
 func registerCreateFolder(server *mcp.Server, mgr *auth.Manager) {
 	mcp.AddTool(server, &mcp.Tool{
-		Name:        "create_folder",
+		Name: "create_folder",
+		Annotations: &mcp.ToolAnnotations{
+			DestructiveHint: auth.BoolPtr(false),
+		},
 		Description: "Create a new folder in Google Drive, optionally inside an existing folder.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input createFolderInput) (*mcp.CallToolResult, any, error) {
 		svc, err := newService(ctx, mgr, input.Account)
@@ -586,8 +561,8 @@ func registerCreateFolder(server *mcp.Server, mgr *auth.Manager) {
 			Name:     input.Name,
 			MimeType: "application/vnd.google-apps.folder",
 		}
-		if input.ParentID != "" {
-			folder.Parents = []string{input.ParentID}
+		if input.FolderID != "" {
+			folder.Parents = []string{input.FolderID}
 		}
 
 		created, err := svc.Files.Create(folder).Fields("id,name,webViewLink").Do()
@@ -596,9 +571,9 @@ func registerCreateFolder(server *mcp.Server, mgr *auth.Manager) {
 		}
 
 		var sb strings.Builder
-		fmt.Fprintf(&sb, "Folder created successfully!\n\n")
+		fmt.Fprintf(&sb, "Folder created.\n\n")
 		fmt.Fprintf(&sb, "Name: %s\n", created.Name)
-		fmt.Fprintf(&sb, "ID: %s\n", created.Id)
+		fmt.Fprintf(&sb, "Folder ID: %s\n", created.Id)
 		if created.WebViewLink != "" {
 			fmt.Fprintf(&sb, "Link: %s\n", created.WebViewLink)
 		}
@@ -614,14 +589,17 @@ func registerCreateFolder(server *mcp.Server, mgr *auth.Manager) {
 // --- drive_move ---
 
 type moveInput struct {
-	Account      string `json:"account" jsonschema:"Account name to use"`
-	FileID       string `json:"file_id" jsonschema:"Google Drive file ID to move"`
-	DestFolderID string `json:"dest_folder_id" jsonschema:"Destination folder ID"`
+	Account  string `json:"account" jsonschema:"Account name"`
+	FileID   string `json:"file_id" jsonschema:"Google Drive file ID to move"`
+	FolderID string `json:"folder_id" jsonschema:"Destination folder ID"`
 }
 
 func registerMove(server *mcp.Server, mgr *auth.Manager) {
 	mcp.AddTool(server, &mcp.Tool{
-		Name:        "move",
+		Name: "move_file",
+		Annotations: &mcp.ToolAnnotations{
+			IdempotentHint: true,
+		},
 		Description: "Move a file to a different folder in Google Drive.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input moveInput) (*mcp.CallToolResult, any, error) {
 		svc, err := newService(ctx, mgr, input.Account)
@@ -638,7 +616,7 @@ func registerMove(server *mcp.Server, mgr *auth.Manager) {
 		previousParents := strings.Join(file.Parents, ",")
 
 		updated, err := svc.Files.Update(input.FileID, &drive.File{}).
-			AddParents(input.DestFolderID).
+			AddParents(input.FolderID).
 			RemoveParents(previousParents).
 			Fields("id,name,parents,webViewLink").Do()
 		if err != nil {
@@ -647,8 +625,8 @@ func registerMove(server *mcp.Server, mgr *auth.Manager) {
 
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{
-				&mcp.TextContent{Text: fmt.Sprintf("File moved successfully!\n\nName: %s\nID: %s\nNew parent: %s\nLink: %s",
-					updated.Name, updated.Id, input.DestFolderID, updated.WebViewLink)},
+				&mcp.TextContent{Text: fmt.Sprintf("File moved.\n\nName: %s\nFile ID: %s\nNew parent: %s\nLink: %s",
+					updated.Name, updated.Id, input.FolderID, updated.WebViewLink)},
 			},
 		}, nil, nil
 	})
@@ -657,7 +635,7 @@ func registerMove(server *mcp.Server, mgr *auth.Manager) {
 // --- drive_copy ---
 
 type copyInput struct {
-	Account  string `json:"account" jsonschema:"Account name to use"`
+	Account  string `json:"account" jsonschema:"Account name"`
 	FileID   string `json:"file_id" jsonschema:"Google Drive file ID to copy"`
 	Name     string `json:"name,omitempty" jsonschema:"Name for the copy (default: 'Copy of <original>')"`
 	FolderID string `json:"folder_id,omitempty" jsonschema:"Destination folder ID for the copy (default: same folder)"`
@@ -665,7 +643,10 @@ type copyInput struct {
 
 func registerCopy(server *mcp.Server, mgr *auth.Manager) {
 	mcp.AddTool(server, &mcp.Tool{
-		Name:        "copy",
+		Name: "copy_file",
+		Annotations: &mcp.ToolAnnotations{
+			DestructiveHint: auth.BoolPtr(false),
+		},
 		Description: "Create a copy of a file in Google Drive, optionally with a new name or in a different folder.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input copyInput) (*mcp.CallToolResult, any, error) {
 		svc, err := newService(ctx, mgr, input.Account)
@@ -688,9 +669,9 @@ func registerCopy(server *mcp.Server, mgr *auth.Manager) {
 		}
 
 		var sb strings.Builder
-		fmt.Fprintf(&sb, "File copied successfully!\n\n")
+		fmt.Fprintf(&sb, "File copied.\n\n")
 		fmt.Fprintf(&sb, "Name: %s\n", copied.Name)
-		fmt.Fprintf(&sb, "ID: %s\n", copied.Id)
+		fmt.Fprintf(&sb, "File ID: %s\n", copied.Id)
 		fmt.Fprintf(&sb, "MIME Type: %s\n", copied.MimeType)
 		if copied.Size > 0 {
 			fmt.Fprintf(&sb, "Size: %d bytes\n", copied.Size)
@@ -710,7 +691,7 @@ func registerCopy(server *mcp.Server, mgr *auth.Manager) {
 // --- drive_share ---
 
 type shareInput struct {
-	Account      string `json:"account" jsonschema:"Account name to use"`
+	Account      string `json:"account" jsonschema:"Account name"`
 	FileID       string `json:"file_id" jsonschema:"Google Drive file ID to share"`
 	EmailAddress string `json:"email_address,omitempty" jsonschema:"Email address to share with (required for 'user' and 'group' types)"`
 	Role         string `json:"role" jsonschema:"Permission role: 'reader', 'commenter', 'writer', or 'organizer'"`
@@ -722,7 +703,11 @@ type shareInput struct {
 
 func registerShare(server *mcp.Server, mgr *auth.Manager) {
 	mcp.AddTool(server, &mcp.Tool{
-		Name: "share",
+		Name: "share_file",
+		Annotations: &mcp.ToolAnnotations{
+			DestructiveHint: auth.BoolPtr(false),
+			IdempotentHint:  true,
+		},
 		Description: `Share a Google Drive file by adding permissions.
 
 Types:
@@ -788,7 +773,7 @@ Roles:
 		}
 
 		var sb strings.Builder
-		fmt.Fprintf(&sb, "File shared successfully!\n\n")
+		fmt.Fprintf(&sb, "File shared.\n\n")
 		fmt.Fprintf(&sb, "Permission ID: %s\n", created.Id)
 		fmt.Fprintf(&sb, "Role: %s\n", created.Role)
 		fmt.Fprintf(&sb, "Type: %s\n", created.Type)
@@ -845,7 +830,7 @@ func formatFileList(files []*drive.File, account string) string {
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "Found %d files:\n\n", len(files))
 	for _, f := range files {
-		fmt.Fprintf(&sb, "- Name: %s\n  ID: %s\n  Account: %s\n  Type: %s\n", f.Name, f.Id, account, f.MimeType)
+		fmt.Fprintf(&sb, "- Name: %s\n  File ID: %s\n  Account: %s\n  Type: %s\n", f.Name, f.Id, account, f.MimeType)
 		if f.Size > 0 {
 			fmt.Fprintf(&sb, "  Size: %d bytes\n", f.Size)
 		}

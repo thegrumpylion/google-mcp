@@ -22,16 +22,20 @@ var Scopes = []string{
 
 // RegisterTools registers all Gmail MCP tools on the given server.
 func RegisterTools(server *mcp.Server, mgr *auth.Manager) {
-	registerAccountsList(server, mgr)
+	auth.RegisterAccountsListTool(server, mgr)
 	registerSearch(server, mgr)
 	registerRead(server, mgr)
 	registerReadThread(server, mgr)
+	registerThreadModify(server, mgr)
 	registerSend(server, mgr)
 	registerListLabels(server, mgr)
 	registerModify(server, mgr)
 	registerGetAttachment(server, mgr)
 	registerDraftCreate(server, mgr)
 	registerDraftList(server, mgr)
+	registerDraftGet(server, mgr)
+	registerDraftUpdate(server, mgr)
+	registerDraftDelete(server, mgr)
 	registerDraftSend(server, mgr)
 }
 
@@ -43,52 +47,17 @@ func newService(ctx context.Context, mgr *auth.Manager, account string) (*gmail.
 	return gmail.NewService(ctx, opt)
 }
 
-// --- accounts_list ---
-
-func registerAccountsList(server *mcp.Server, mgr *auth.Manager) {
-	mcp.AddTool(server, &mcp.Tool{
-		Name:        "accounts_list",
-		Description: "List all configured Google accounts. Use this to discover available account names.",
-		Annotations: &mcp.ToolAnnotations{
-			ReadOnlyHint: true,
-		},
-	}, func(ctx context.Context, req *mcp.CallToolRequest, _ any) (*mcp.CallToolResult, any, error) {
-		accounts := mgr.ListAccounts()
-		if len(accounts) == 0 {
-			return &mcp.CallToolResult{
-				Content: []mcp.Content{
-					&mcp.TextContent{Text: "No accounts configured. Run 'google-mcp auth add <name>' to add one."},
-				},
-			}, nil, nil
-		}
-		var sb strings.Builder
-		sb.WriteString("Configured accounts:\n")
-		for name, email := range accounts {
-			if email != "" {
-				fmt.Fprintf(&sb, "  - %s (%s)\n", name, email)
-			} else {
-				fmt.Fprintf(&sb, "  - %s\n", name)
-			}
-		}
-		return &mcp.CallToolResult{
-			Content: []mcp.Content{
-				&mcp.TextContent{Text: sb.String()},
-			},
-		}, nil, nil
-	})
-}
-
 // --- gmail_search ---
 
 type searchInput struct {
-	Account    string `json:"account" jsonschema:"Account name (e.g. 'personal', 'work') or 'all' to search all accounts"`
+	Account    string `json:"account" jsonschema:"Account name or 'all' for all accounts"`
 	Query      string `json:"query" jsonschema:"Gmail search query (same syntax as Gmail search bar)"`
 	MaxResults int64  `json:"max_results,omitempty" jsonschema:"Maximum number of results per account (default 10, max 500)"`
 }
 
 func registerSearch(server *mcp.Server, mgr *auth.Manager) {
 	mcp.AddTool(server, &mcp.Tool{
-		Name:        "search",
+		Name:        "search_messages",
 		Description: "Search Gmail messages using Gmail query syntax. Set account to 'all' to search across all accounts. Returns message IDs and snippets. Use read to get full message content.",
 		Annotations: &mcp.ToolAnnotations{
 			ReadOnlyHint: true,
@@ -143,7 +112,7 @@ func registerSearch(server *mcp.Server, mgr *auth.Manager) {
 			for _, msg := range resp.Messages {
 				detail, err := svc.Users.Messages.Get("me", msg.Id).Format("metadata").MetadataHeaders("From", "Subject", "Date").Do()
 				if err != nil {
-					fmt.Fprintf(&sb, "- ID: %s (error fetching details: %v)\n", msg.Id, err)
+					fmt.Fprintf(&sb, "- Message ID: %s (error fetching details: %v)\n", msg.Id, err)
 					continue
 				}
 				headers := make(map[string]string)
@@ -152,7 +121,7 @@ func registerSearch(server *mcp.Server, mgr *auth.Manager) {
 						headers[h.Name] = h.Value
 					}
 				}
-				fmt.Fprintf(&sb, "- ID: %s\n  Account: %s\n  From: %s\n  Subject: %s\n  Date: %s\n  Snippet: %s\n\n",
+				fmt.Fprintf(&sb, "- Message ID: %s\n  Account: %s\n  From: %s\n  Subject: %s\n  Date: %s\n  Snippet: %s\n\n",
 					msg.Id, account, headers["From"], headers["Subject"], headers["Date"], detail.Snippet)
 			}
 		}
@@ -168,13 +137,13 @@ func registerSearch(server *mcp.Server, mgr *auth.Manager) {
 // --- gmail_read ---
 
 type readInput struct {
-	Account   string `json:"account" jsonschema:"Account name to use"`
+	Account   string `json:"account" jsonschema:"Account name"`
 	MessageID string `json:"message_id" jsonschema:"Gmail message ID (from search results)"`
 }
 
 func registerRead(server *mcp.Server, mgr *auth.Manager) {
 	mcp.AddTool(server, &mcp.Tool{
-		Name:        "read",
+		Name:        "read_message",
 		Description: "Read the full content of a Gmail message by ID. Returns headers, body text, and attachment list. Use get_attachment to download attachments.",
 		Annotations: &mcp.ToolAnnotations{
 			ReadOnlyHint: true,
@@ -281,54 +250,32 @@ func extractBody(part *gmail.MessagePart) string {
 // --- gmail_send ---
 
 type sendInput struct {
-	Account string `json:"account" jsonschema:"Account name to send from"`
-	To      string `json:"to" jsonschema:"Recipient email address"`
-	Subject string `json:"subject" jsonschema:"Email subject line"`
-	Body    string `json:"body" jsonschema:"Email body (plain text)"`
-	Cc      string `json:"cc,omitempty" jsonschema:"CC recipients (comma-separated email addresses)"`
-	Bcc     string `json:"bcc,omitempty" jsonschema:"BCC recipients (comma-separated email addresses)"`
-	ReplyTo string `json:"reply_to,omitempty" jsonschema:"Message ID to reply to (sets In-Reply-To and References headers)"`
+	Account string `json:"account" jsonschema:"Account name"`
+	composeInput
+	ReplyToMessageID string `json:"reply_to_message_id,omitempty" jsonschema:"Message ID to reply to (sets In-Reply-To and References headers, keeps thread)"`
 }
 
 func registerSend(server *mcp.Server, mgr *auth.Manager) {
 	mcp.AddTool(server, &mcp.Tool{
-		Name:        "send",
+		Name:        "send_message",
 		Description: "Send an email via Gmail. Supports To, CC, BCC, and replying to existing messages.",
+		Annotations: &mcp.ToolAnnotations{
+			DestructiveHint: auth.BoolPtr(false),
+		},
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input sendInput) (*mcp.CallToolResult, any, error) {
 		svc, err := newService(ctx, mgr, input.Account)
 		if err != nil {
 			return nil, nil, fmt.Errorf("creating Gmail service: %w", err)
 		}
 
-		// Build the RFC 2822 message.
-		var raw strings.Builder
-		fmt.Fprintf(&raw, "To: %s\r\n", input.To)
-		if input.Cc != "" {
-			fmt.Fprintf(&raw, "Cc: %s\r\n", input.Cc)
+		result, err := buildMessage(svc, input.composeInput, input.ReplyToMessageID)
+		if err != nil {
+			return nil, nil, err
 		}
-		if input.Bcc != "" {
-			fmt.Fprintf(&raw, "Bcc: %s\r\n", input.Bcc)
-		}
-		fmt.Fprintf(&raw, "Subject: %s\r\n", mime2047Encode(input.Subject))
-		fmt.Fprintf(&raw, "Content-Type: text/plain; charset=\"UTF-8\"\r\n")
-		if input.ReplyTo != "" {
-			// Fetch the original message to get its Message-ID header.
-			origMsg, err := svc.Users.Messages.Get("me", input.ReplyTo).Format("metadata").MetadataHeaders("Message-Id").Do()
-			if err == nil && origMsg.Payload != nil {
-				for _, h := range origMsg.Payload.Headers {
-					if h.Name == "Message-Id" {
-						fmt.Fprintf(&raw, "In-Reply-To: %s\r\n", h.Value)
-						fmt.Fprintf(&raw, "References: %s\r\n", h.Value)
-					}
-				}
-			}
-		}
-		raw.WriteString("\r\n")
-		raw.WriteString(input.Body)
 
 		msg := &gmail.Message{
-			Raw:      base64.URLEncoding.EncodeToString([]byte(raw.String())),
-			ThreadId: input.ReplyTo, // keeps it in the same thread if replying
+			Raw:      result.Raw,
+			ThreadId: result.ThreadID,
 		}
 
 		sent, err := svc.Users.Messages.Send("me", msg).Do()
@@ -338,7 +285,7 @@ func registerSend(server *mcp.Server, mgr *auth.Manager) {
 
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{
-				&mcp.TextContent{Text: fmt.Sprintf("Message sent successfully. ID: %s, Thread: %s", sent.Id, sent.ThreadId)},
+				&mcp.TextContent{Text: fmt.Sprintf("Message sent.\n\nMessage ID: %s\nThread ID: %s", sent.Id, sent.ThreadId)},
 			},
 		}, nil, nil
 	})
@@ -358,7 +305,7 @@ func mime2047Encode(s string) string {
 // --- gmail_list_labels ---
 
 type listLabelsInput struct {
-	Account string `json:"account" jsonschema:"Account name (e.g. 'personal', 'work') or 'all' to list labels from all accounts"`
+	Account string `json:"account" jsonschema:"Account name or 'all' for all accounts"`
 }
 
 func registerListLabels(server *mcp.Server, mgr *auth.Manager) {
@@ -401,7 +348,7 @@ func registerListLabels(server *mcp.Server, mgr *auth.Manager) {
 			}
 			sb.WriteString("Gmail labels:\n")
 			for _, label := range resp.Labels {
-				fmt.Fprintf(&sb, "  - %s (ID: %s, type: %s)\n", label.Name, label.Id, label.Type)
+				fmt.Fprintf(&sb, "  - %s (Label ID: %s, type: %s)\n", label.Name, label.Id, label.Type)
 			}
 			sb.WriteString("\n")
 		}

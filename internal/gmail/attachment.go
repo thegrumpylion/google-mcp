@@ -48,7 +48,7 @@ func listAttachments(part *gmailapi.MessagePart) []attachmentInfo {
 // --- gmail_get_attachment ---
 
 type getAttachmentInput struct {
-	Account      string `json:"account" jsonschema:"Account name to use"`
+	Account      string `json:"account" jsonschema:"Account name"`
 	MessageID    string `json:"message_id" jsonschema:"Gmail message ID that contains the attachment"`
 	AttachmentID string `json:"attachment_id" jsonschema:"Attachment ID (from read or read_thread results)"`
 }

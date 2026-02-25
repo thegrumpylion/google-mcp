@@ -20,7 +20,7 @@ var Scopes = []string{
 
 // RegisterTools registers all Calendar MCP tools on the given server.
 func RegisterTools(server *mcp.Server, mgr *auth.Manager) {
-	registerAccountsList(server, mgr)
+	auth.RegisterAccountsListTool(server, mgr)
 	registerListCalendars(server, mgr)
 	registerListEvents(server, mgr)
 	registerGetEvent(server, mgr)
@@ -38,45 +38,10 @@ func newService(ctx context.Context, mgr *auth.Manager, account string) (*calend
 	return calendar.NewService(ctx, opt)
 }
 
-// --- accounts_list ---
-
-func registerAccountsList(server *mcp.Server, mgr *auth.Manager) {
-	mcp.AddTool(server, &mcp.Tool{
-		Name:        "accounts_list",
-		Description: "List all configured Google accounts. Use this to discover available account names.",
-		Annotations: &mcp.ToolAnnotations{
-			ReadOnlyHint: true,
-		},
-	}, func(ctx context.Context, req *mcp.CallToolRequest, _ any) (*mcp.CallToolResult, any, error) {
-		accounts := mgr.ListAccounts()
-		if len(accounts) == 0 {
-			return &mcp.CallToolResult{
-				Content: []mcp.Content{
-					&mcp.TextContent{Text: "No accounts configured. Run 'google-mcp auth add <name>' to add one."},
-				},
-			}, nil, nil
-		}
-		var sb strings.Builder
-		sb.WriteString("Configured accounts:\n")
-		for name, email := range accounts {
-			if email != "" {
-				fmt.Fprintf(&sb, "  - %s (%s)\n", name, email)
-			} else {
-				fmt.Fprintf(&sb, "  - %s\n", name)
-			}
-		}
-		return &mcp.CallToolResult{
-			Content: []mcp.Content{
-				&mcp.TextContent{Text: sb.String()},
-			},
-		}, nil, nil
-	})
-}
-
 // --- calendar_list_calendars ---
 
 type listCalendarsInput struct {
-	Account string `json:"account" jsonschema:"Account name (e.g. 'personal', 'work') or 'all' to list from all accounts"`
+	Account string `json:"account" jsonschema:"Account name or 'all' for all accounts"`
 }
 
 func registerListCalendars(server *mcp.Server, mgr *auth.Manager) {
@@ -120,7 +85,7 @@ func registerListCalendars(server *mcp.Server, mgr *auth.Manager) {
 
 			fmt.Fprintf(&sb, "Found %d calendars:\n\n", len(resp.Items))
 			for _, cal := range resp.Items {
-				fmt.Fprintf(&sb, "- %s\n  ID: %s\n  Account: %s\n  Access: %s\n", cal.Summary, cal.Id, account, cal.AccessRole)
+				fmt.Fprintf(&sb, "- %s\n  Calendar ID: %s\n  Account: %s\n  Access: %s\n", cal.Summary, cal.Id, account, cal.AccessRole)
 				if cal.Description != "" {
 					fmt.Fprintf(&sb, "  Description: %s\n", cal.Description)
 				}
@@ -142,7 +107,7 @@ func registerListCalendars(server *mcp.Server, mgr *auth.Manager) {
 // --- calendar_list_events ---
 
 type listEventsInput struct {
-	Account    string `json:"account" jsonschema:"Account name (e.g. 'personal', 'work') or 'all' to list from all accounts"`
+	Account    string `json:"account" jsonschema:"Account name or 'all' for all accounts"`
 	CalendarID string `json:"calendar_id,omitempty" jsonschema:"Calendar ID (default: 'primary')"`
 	TimeMin    string `json:"time_min,omitempty" jsonschema:"Start of time range in RFC3339 format (e.g. '2024-01-15T00:00:00Z'). Default: now"`
 	TimeMax    string `json:"time_max,omitempty" jsonschema:"End of time range in RFC3339 format. Default: 7 days from now"`
@@ -251,7 +216,7 @@ func registerListEvents(server *mcp.Server, mgr *auth.Manager) {
 // --- calendar_get_event ---
 
 type getEventInput struct {
-	Account    string `json:"account" jsonschema:"Account name to use"`
+	Account    string `json:"account" jsonschema:"Account name"`
 	CalendarID string `json:"calendar_id,omitempty" jsonschema:"Calendar ID (default: 'primary')"`
 	EventID    string `json:"event_id" jsonschema:"Event ID to retrieve"`
 }
@@ -290,7 +255,7 @@ func registerGetEvent(server *mcp.Server, mgr *auth.Manager) {
 // --- calendar_create_event ---
 
 type createEventInput struct {
-	Account     string   `json:"account" jsonschema:"Account name to use"`
+	Account     string   `json:"account" jsonschema:"Account name"`
 	CalendarID  string   `json:"calendar_id,omitempty" jsonschema:"Calendar ID (default: 'primary')"`
 	Summary     string   `json:"summary" jsonschema:"Event title"`
 	Description string   `json:"description,omitempty" jsonschema:"Event description"`
@@ -303,7 +268,10 @@ type createEventInput struct {
 
 func registerCreateEvent(server *mcp.Server, mgr *auth.Manager) {
 	mcp.AddTool(server, &mcp.Tool{
-		Name:        "create_event",
+		Name: "create_event",
+		Annotations: &mcp.ToolAnnotations{
+			DestructiveHint: auth.BoolPtr(false),
+		},
 		Description: "Create a new event on a Google Calendar. Supports timed and all-day events, with optional attendees and location.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input createEventInput) (*mcp.CallToolResult, any, error) {
 		svc, err := newService(ctx, mgr, input.Account)
@@ -351,7 +319,7 @@ func registerCreateEvent(server *mcp.Server, mgr *auth.Manager) {
 
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{
-				&mcp.TextContent{Text: fmt.Sprintf("Event created successfully!\n\nID: %s\nLink: %s\n\n%s",
+				&mcp.TextContent{Text: fmt.Sprintf("Event created.\n\nEvent ID: %s\nLink: %s\n\n%s",
 					created.Id, created.HtmlLink, formatEvent(created, input.Account))},
 			},
 		}, nil, nil
@@ -361,7 +329,7 @@ func registerCreateEvent(server *mcp.Server, mgr *auth.Manager) {
 // --- calendar_update_event ---
 
 type updateEventInput struct {
-	Account     string   `json:"account" jsonschema:"Account name to use"`
+	Account     string   `json:"account" jsonschema:"Account name"`
 	CalendarID  string   `json:"calendar_id,omitempty" jsonschema:"Calendar ID (default: 'primary')"`
 	EventID     string   `json:"event_id" jsonschema:"Event ID to update"`
 	Summary     string   `json:"summary,omitempty" jsonschema:"New event title (leave empty to keep current)"`
@@ -376,6 +344,9 @@ type updateEventInput struct {
 func registerUpdateEvent(server *mcp.Server, mgr *auth.Manager) {
 	mcp.AddTool(server, &mcp.Tool{
 		Name: "update_event",
+		Annotations: &mcp.ToolAnnotations{
+			IdempotentHint: true,
+		},
 		Description: `Update an existing calendar event. Only specified fields are changed; omitted fields keep their current values.
 
 To update attendees, provide the full list — it replaces the existing attendees.
@@ -446,7 +417,7 @@ To change times, provide both start_time and end_time.`,
 
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{
-				&mcp.TextContent{Text: fmt.Sprintf("Event updated successfully!\n\nID: %s\nLink: %s\n\n%s",
+				&mcp.TextContent{Text: fmt.Sprintf("Event updated.\n\nEvent ID: %s\nLink: %s\n\n%s",
 					updated.Id, updated.HtmlLink, formatEvent(updated, input.Account))},
 			},
 		}, nil, nil
@@ -456,7 +427,7 @@ To change times, provide both start_time and end_time.`,
 // --- calendar_delete_event ---
 
 type deleteEventInput struct {
-	Account    string `json:"account" jsonschema:"Account name to use"`
+	Account    string `json:"account" jsonschema:"Account name"`
 	CalendarID string `json:"calendar_id,omitempty" jsonschema:"Calendar ID (default: 'primary')"`
 	EventID    string `json:"event_id" jsonschema:"Event ID to delete"`
 }
@@ -464,7 +435,8 @@ type deleteEventInput struct {
 func registerDeleteEvent(server *mcp.Server, mgr *auth.Manager) {
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "delete_event",
-		Description: "Delete a calendar event by ID. This permanently removes the event from the calendar.",
+		Annotations: &mcp.ToolAnnotations{},
+		Description: "Delete a calendar event by ID. The event is kept in trash for 30 days before permanent removal.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input deleteEventInput) (*mcp.CallToolResult, any, error) {
 		svc, err := newService(ctx, mgr, input.Account)
 		if err != nil {
@@ -482,7 +454,7 @@ func registerDeleteEvent(server *mcp.Server, mgr *auth.Manager) {
 
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{
-				&mcp.TextContent{Text: fmt.Sprintf("Event %s deleted successfully.", input.EventID)},
+				&mcp.TextContent{Text: fmt.Sprintf("Event %s deleted.", input.EventID)},
 			},
 		}, nil, nil
 	})
@@ -491,7 +463,7 @@ func registerDeleteEvent(server *mcp.Server, mgr *auth.Manager) {
 // --- calendar_respond_event ---
 
 type respondEventInput struct {
-	Account    string `json:"account" jsonschema:"Account name to use"`
+	Account    string `json:"account" jsonschema:"Account name"`
 	CalendarID string `json:"calendar_id,omitempty" jsonschema:"Calendar ID (default: 'primary')"`
 	EventID    string `json:"event_id" jsonschema:"Event ID to respond to"`
 	Response   string `json:"response" jsonschema:"Response status: 'accepted', 'declined', or 'tentative'"`
@@ -506,7 +478,10 @@ Valid responses:
   - "accepted" — Accept the invitation
   - "declined" — Decline the invitation
   - "tentative" — Tentatively accept the invitation`,
-		Annotations: &mcp.ToolAnnotations{},
+		Annotations: &mcp.ToolAnnotations{
+			DestructiveHint: auth.BoolPtr(false),
+			IdempotentHint:  true,
+		},
 	}, func(ctx context.Context, req *mcp.CallToolRequest, input respondEventInput) (*mcp.CallToolResult, any, error) {
 		// Validate response value.
 		switch input.Response {
@@ -571,7 +546,7 @@ func isDateOnly(s string) bool {
 func formatEvent(event *calendar.Event, account string) string {
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "- %s\n", event.Summary)
-	fmt.Fprintf(&sb, "  ID: %s\n", event.Id)
+	fmt.Fprintf(&sb, "  Event ID: %s\n", event.Id)
 	fmt.Fprintf(&sb, "  Account: %s\n", account)
 
 	if event.Start != nil {
@@ -603,7 +578,7 @@ func formatEvent(event *calendar.Event, account string) string {
 func formatEventDetailed(event *calendar.Event) string {
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "Event: %s\n", event.Summary)
-	fmt.Fprintf(&sb, "ID: %s\n", event.Id)
+	fmt.Fprintf(&sb, "Event ID: %s\n", event.Id)
 
 	if event.Start != nil {
 		if event.Start.DateTime != "" {

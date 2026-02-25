@@ -1,15 +1,38 @@
 package gmail
 
 import (
+	"context"
 	"encoding/base64"
 	"os"
 	"path/filepath"
+	"sort"
 	"testing"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/thegrumpylion/google-mcp/internal/auth"
 	gmailapi "google.golang.org/api/gmail/v1"
 )
+
+// connect creates an in-memory client session connected to the given server.
+// This follows the pattern from the MCP Go SDK's own tests.
+func connect(t *testing.T, server *mcp.Server) *mcp.ClientSession {
+	t.Helper()
+	ctx := context.Background()
+	serverTransport, clientTransport := mcp.NewInMemoryTransports()
+	serverSession, err := server.Connect(ctx, serverTransport, nil)
+	if err != nil {
+		t.Fatalf("server.Connect: %v", err)
+	}
+	t.Cleanup(func() { serverSession.Close() })
+
+	client := mcp.NewClient(&mcp.Implementation{Name: "test-client", Version: "test"}, nil)
+	session, err := client.Connect(ctx, clientTransport, nil)
+	if err != nil {
+		t.Fatalf("client.Connect: %v", err)
+	}
+	t.Cleanup(func() { session.Close() })
+	return session
+}
 
 // newTestManager creates an auth.Manager with a temp config dir and dummy credentials.
 func newTestManager(t *testing.T) *auth.Manager {
@@ -26,12 +49,115 @@ func newTestManager(t *testing.T) *auth.Manager {
 	return mgr
 }
 
+func newTestServer(t *testing.T) *mcp.Server {
+	t.Helper()
+	mgr := newTestManager(t)
+	server := mcp.NewServer(&mcp.Implementation{Name: "test-gmail", Version: "test"}, nil)
+	RegisterTools(server, mgr)
+	return server
+}
+
+func listTools(t *testing.T, server *mcp.Server) []*mcp.Tool {
+	t.Helper()
+	ctx := context.Background()
+	session := connect(t, server)
+	res, err := session.ListTools(ctx, nil)
+	if err != nil {
+		t.Fatalf("ListTools: %v", err)
+	}
+	return res.Tools
+}
+
+func listToolNames(t *testing.T, server *mcp.Server) []string {
+	t.Helper()
+	tools := listTools(t, server)
+	names := make([]string, 0, len(tools))
+	for _, tool := range tools {
+		names = append(names, tool.Name)
+	}
+	sort.Strings(names)
+	return names
+}
+
 func TestRegisterTools(t *testing.T) {
 	mgr := newTestManager(t)
 	server := mcp.NewServer(&mcp.Implementation{Name: "test-gmail", Version: "test"}, nil)
 
 	// This should not panic — the exact bug we fixed with jsonschema tags.
 	RegisterTools(server, mgr)
+}
+
+func TestToolNames(t *testing.T) {
+	server := newTestServer(t)
+	got := listToolNames(t, server)
+
+	want := []string{
+		"accounts_list",
+		"create_draft",
+		"delete_draft",
+		"get_attachment",
+		"get_draft",
+		"list_drafts",
+		"list_labels",
+		"modify_messages",
+		"modify_thread",
+		"read_message",
+		"read_thread",
+		"search_messages",
+		"send_draft",
+		"send_message",
+		"update_draft",
+	}
+
+	if len(got) != len(want) {
+		t.Fatalf("got %d tools, want %d\ngot:  %v\nwant: %v", len(got), len(want), got, want)
+	}
+
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("tool[%d] = %q, want %q", i, got[i], want[i])
+		}
+	}
+}
+
+func TestToolAnnotations(t *testing.T) {
+	server := newTestServer(t)
+	tools := listTools(t, server)
+
+	toolMap := make(map[string]*mcp.Tool)
+	for _, tool := range tools {
+		toolMap[tool.Name] = tool
+	}
+
+	readOnly := []string{
+		"accounts_list", "search_messages", "read_message", "read_thread",
+		"list_labels", "get_attachment", "list_drafts", "get_draft",
+	}
+	for _, name := range readOnly {
+		tool := toolMap[name]
+		if tool == nil {
+			t.Errorf("tool %q not found", name)
+			continue
+		}
+		if tool.Annotations == nil || !tool.Annotations.ReadOnlyHint {
+			t.Errorf("tool %q should have ReadOnlyHint=true", name)
+		}
+	}
+
+	mutations := []string{
+		"send_message", "modify_messages", "modify_thread",
+		"create_draft", "update_draft", "delete_draft", "send_draft",
+	}
+	for _, name := range mutations {
+		tool := toolMap[name]
+		if tool == nil {
+			t.Errorf("tool %q not found", name)
+			continue
+		}
+		if tool.Annotations != nil && tool.Annotations.ReadOnlyHint {
+			t.Errorf("mutation tool %q should not have ReadOnlyHint=true", name)
+		}
+	}
 }
 
 func TestExtractBody_PlainText(t *testing.T) {
